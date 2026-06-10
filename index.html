@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>東京私旅 - Supabase 雲端同步版</title>
+    <title>東京私旅 - 雲端自動同步版</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
@@ -38,11 +38,12 @@
             </div>
         </div>
 
-        <div class="flex items-center gap-2 bg-sky-900/40 p-2 rounded-xl border border-sky-800 mb-2 text-xs">
-            <span class="text-amber-200 font-bold flex-shrink-0">🔑 雲端旅程密碼：</span>
-            <input type="text" v-model="roomId" @change="connectToSupabase" placeholder="輸入密碼全家多機即時同步" class="bg-sky-950 text-white px-2 py-1 rounded-md border border-sky-700 w-full focus:outline-none font-mono">
-            <span v-if="isSynced" class="text-emerald-400 font-bold flex-shrink-0 animate-pulse">● 已同步</span>
-            <span v-else class="text-rose-400 font-bold flex-shrink-0">● 本地</span>
+        <div class="flex items-center justify-between bg-sky-900/40 p-2.5 rounded-xl border border-sky-800 text-xs">
+            <span class="text-amber-200 font-bold flex-shrink-0">🌐 雲端多機同步狀態：</span>
+            <div class="flex items-center gap-1.5">
+                <span v-if="isSynced" class="text-emerald-400 font-bold animate-pulse">● 已自動連線</span>
+                <span v-else class="text-rose-400 font-bold">● 連線中...</span>
+            </div>
         </div>
 
         <div v-if="currentTab === 'itinerary'" class="flex items-center gap-2 mt-3">
@@ -279,9 +280,12 @@
 <script>
 const { createApp, ref, computed, onMounted, nextTick } = Vue;
 
-// 已經完美修正你的專屬 URL 與 金鑰
+// 後端資料庫連線參數
 const SUPABASE_URL = "https://vumrenvgdbjeaiuvnuzx.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ1bXJlbnZnZGJqZWFpdXZudXp4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEwNTI4NDcsImV4cCI6MjA5NjYyODg0N30.Rn_WmoNaz1-PfHDznfJY0g_UU-kWs3UR4Wd5e2SchEo";
+
+// 固定同一個雲端同步房間識別碼，避免全家人需要重複輸入密碼
+const FIXED_ROOM_ID = "tokyo2026_family";
 
 createApp({
     setup() {
@@ -291,7 +295,6 @@ createApp({
         const calcInputJPY = ref(null);
         const scrollContainer = ref(null);
         
-        const roomId = ref(localStorage.getItem('trip_room_id') || '');
         const isSynced = ref(false);
         let supabaseClient, cloudChannel = null;
 
@@ -316,27 +319,17 @@ createApp({
         const tabs = [{id:'itinerary',name:'每日行程',icon:'📍'},{id:'info',name:'旅遊資訊',icon:'ℹ️'},{id:'shopping',name:'購物清單',icon:'🧺'},{id:'wallet',name:'花費紀錄',icon:'💰'}];
         const showModal = ref(false); const isEditMode = ref(false); const modalType = ref(''); const modalData = ref({}); let currentTargetEventId = null;
 
-        // 連接與訂閱 Supabase 核心即時同步機制
+        // 核心免密碼自動同步機制
         const connectToSupabase = async () => {
-            if (cloudChannel) supabaseClient.removeChannel(cloudChannel);
-            localStorage.setItem('trip_room_id', roomId.value);
-
-            if (!roomId.value.trim()) {
-                isSynced.value = false;
-                return;
-            }
-
             if (!supabaseClient) {
                 supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
             }
 
-            const cleanRoomId = roomId.value.trim();
-
-            // 1. 先抓取一次資料庫現有紀錄
+            // 1. 從資料庫讀取先前儲存的最新旅程數據
             const { data, error } = await supabaseClient
                 .from('trips')
                 .select('*')
-                .eq('room_id', cleanRoomId)
+                .eq('room_id', FIXED_ROOM_ID)
                 .maybeSingle();
 
             if (data) {
@@ -346,17 +339,17 @@ createApp({
                 if (data.expenses) expenses.value = data.expenses;
                 saveLocalBackup();
             } else {
-                // 如果資料庫沒這個房間，直接主動新增一筆
+                // 如果是第一次初始化，在資料庫內建立新紀錄
                 await supabaseClient.from('trips').insert([{
-                    room_id: cleanRoomId, days: days.value, events: events.value, shopping_list: shoppingList.value, expenses: expenses.value
+                    room_id: FIXED_ROOM_ID, days: days.value, events: events.value, shopping_list: shoppingList.value, expenses: expenses.value
                 }]);
             }
             isSynced.value = true;
 
-            // 2. 開啟即時同步廣播監聽 (Realtime Listener)
+            // 2. 建立廣播管道，當別人修改時網頁會自動更新
             cloudChannel = supabaseClient
-                .channel(`public:trips:room_${cleanRoomId}`)
-                .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'trips', filter: `room_id=eq.${cleanRoomId}` }, (payload) => {
+                .channel(`public:trips:room_${FIXED_ROOM_ID}`)
+                .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'trips', filter: `room_id=eq.${FIXED_ROOM_ID}` }, (payload) => {
                     const next = payload.new;
                     if (next) {
                         if (next.days) days.value = next.days;
@@ -369,10 +362,10 @@ createApp({
                 .subscribe();
         };
 
-        // 更新數據推送到 Supabase
+        // 修改內容時自動背後推送到 Supabase 雲端
         const updateCloud = async () => {
             saveLocalBackup();
-            if (!isSynced.value || !roomId.value.trim() || !supabaseClient) return;
+            if (!isSynced.value || !supabaseClient) return;
             try {
                 await supabaseClient
                     .from('trips')
@@ -382,7 +375,7 @@ createApp({
                         shopping_list: shoppingList.value,
                         expenses: expenses.value
                     })
-                    .eq('room_id', roomId.value.trim());
+                    .eq('room_id', FIXED_ROOM_ID);
             } catch (e) {
                 console.error("Supabase同步失敗:", e);
             }
@@ -429,7 +422,7 @@ createApp({
             if (days.value.length === 0 || !days.value[selectedDay.value]) return { typeTitle: '提示', badgeClass: 'bg-slate-500', icon: '☁️', desc: '無日期數據', tempInfo: '--°C', pop: null };
             const dayDiff = days.value[selectedDay.value].dayValue - new Date().getDate();
             if (dayDiff === 0) return { typeTitle: '🔴 東京。現時天氣', badgeClass: 'bg-rose-500', icon: weatherDataStore.value.live.icon, desc: weatherDataStore.value.live.desc, tempInfo: `${weatherDataStore.value.live.temp}°C`, pop: weatherDataStore.value.live.pop };
-            return { typeTitle: '💡 6月東京氣候提示', badgeClass: 'bg-amber-500', icon: '🌤️', desc: '初夏梅雨季，建議攜帶雨傘備用。', tempInfo: '20°C ~ 27°C', pop: null };
+            return { typeTitle: '💡 東京氣候提示', badgeClass: 'bg-amber-500', icon: '🌤️', desc: '初夏梅雨季，建議攜帶雨傘備用。', tempInfo: '20°C ~ 27°C', pop: null };
         });
 
         const fetchAllWeather = async () => {
@@ -444,7 +437,7 @@ createApp({
         const totalJPY = computed(() => expenses.value.reduce((sum, item) => sum + (item.amount || 0), 0));
         const totalHKD = computed(() => totalJPY.value * exchangeRate.value);
         const getPrevDayHotel = (day) => day === 0 ? null : "東京淺草橫綱Hotel";
-        const triggerGoogleMap = (loc) => window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(loc)}`, '_blank');
+        const triggerGoogleMap = (loc) => window.open(`https://maps.google.com/?q=${encodeURIComponent(loc)}`, '_blank');
         const getCategoryClass = (cat) => ({ '景點':'bg-rose-100 text-rose-700','住宿':'bg-emerald-100 text-emerald-700','美食':'bg-amber-100 text-amber-700' }[cat] || 'bg-slate-100');
 
         const triggerFAB = () => {
@@ -487,13 +480,13 @@ createApp({
 
         onMounted(() => {
             fetchAllWeather();
-            if (roomId.value.trim()) connectToSupabase();
+            connectToSupabase(); // 網頁開啟時就立刻自動連線
         });
 
         return { 
-            currentTab, selectedDay, exchangeRate, calcInputJPY, tabs, days, activeWeather, scrollContainer, roomId, isSynced,
+            currentTab, selectedDay, exchangeRate, calcInputJPY, tabs, days, activeWeather, scrollContainer, isSynced,
             currentDayEvents, shoppingList, expenses, totalJPY, totalHKD, triggerGoogleMap, getCategoryClass, getPrevDayHotel,
-            showModal, isEditMode, modalType, modalData, modalTitle, triggerFAB, openModal, closeModal, connectToSupabase, updateCloud,
+            showModal, isEditMode, modalType, modalData, modalTitle, triggerFAB, openModal, closeModal, updateCloud,
             saveEvent, deleteEvent, saveShoppingItem, deleteShoppingItem, handleImageUpload, saveExpenseItem, deleteExpenseItem, scrollToDay,
             openDayManager, addNewDayToModal, removeDayFromModal, saveDaysConfig
         };
