@@ -339,7 +339,7 @@ const { createApp, ref, computed, onMounted, nextTick } = Vue;
 const SUPABASE_URL = "https://vumrenvgdbjeaiuvnuzx.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_620_zlLQs6r7PalgpLKuvQ_3kFBtyUB";
 const FIXED_ROOM_ID = "tokyo2026_family";
-const TABLE_NAME = "tokyo-travel-app";
+const TABLE_NAME = "trips";
 
 createApp({
     setup() {
@@ -539,7 +539,7 @@ createApp({
         const totalJPY = computed(() => expenses.value.reduce((sum, item) => sum + (item.amount || 0), 0));
         const totalHKD = computed(() => totalJPY.value * exchangeRate.value);
         const getPrevDayHotel = (day) => day === 0 ? null : "東京淺草橫綱Hotel";
-        const triggerGoogleMap = (loc) => window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(loc)}`, '_blank');
+		const triggerGoogleMap = (loc) => window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(loc)}`, '_blank');  
         const getCategoryClass = (cat) => ({ '景點':'bg-rose-100 text-rose-700','住宿':'bg-emerald-100 text-emerald-700','美食':'bg-amber-100 text-amber-700' }[cat] || 'bg-slate-100');
 
         const triggerFAB = () => {
