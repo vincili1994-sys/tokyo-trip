@@ -337,7 +337,7 @@ const { createApp, ref, computed, onMounted, nextTick } = Vue;
 
 // 🌟 請務補檢查並重新貼上正確的驗證憑證
 const SUPABASE_URL = "https://vumrenvgdbjeaiuvnuzx.supabase.co";
-const SUPABASE_ANON_KEY = "sb_publishable_620_zlLQs6r7PalgpLKuvQ_3kFBtyUB";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ1bXJlbnZnZGJqZWFpdXZudXp4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEwNTI4NDcsImV4cCI6MjA5NjYyODg0N30.Rn_WmoNaz1-PfHDznfJY0g_UU-kWs3UR4Wd5e2SchEo";
 const FIXED_ROOM_ID = "tokyo2026_family";
 const TABLE_NAME = "trips";
 
@@ -532,7 +532,7 @@ createApp({
 
         // --- 其他輔助功能維持 ---
         const activeWeather = computed(() => {
-            return { typeTitle: '💡 旅遊提示', badgeClass: 'bg-amber-500', icon: '🌤️', desc: '行程與預算多機已強制本地安全鎖隔離同步。', tempInfo: '24°C', pop: null };
+            return { typeTitle: '🌸 東京天氣', badgeClass: 'bg-rose-500', icon: '☀️', desc: '東京今日晴朗，出門記得帶件薄外套與雨傘喔！', tempInfo: '18°C ~ 25°C', pop: 10 };
         });
 
         const currentDayEvents = computed(() => events.value.filter(e => e.dayIdx === selectedDay.value));
