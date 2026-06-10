@@ -9,7 +9,6 @@
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&display=swap" rel="stylesheet">
     
-    <!-- 🌟 引入 Supabase 官方網頁版 SDK -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
     <style>
@@ -48,7 +47,6 @@
             </div>
         </div>
 
-        <!-- 🌟 雲端連線狀態列 -->
         <div class="flex items-center justify-between bg-sky-900/40 p-2 rounded-xl border border-sky-800 text-xs my-1">
             <span class="text-amber-200 font-bold flex-shrink-0">🌐 雲端多機同步狀態：</span>
             <div class="flex items-center gap-1.5">
@@ -335,10 +333,11 @@
 <script>
 const { createApp, ref, computed, onMounted, nextTick } = Vue;
 
-// 🌟 已自動填入您專屬的 Supabase 連線參數
+// 🌟 已修正為正確的專屬 Supabase URL 與公鑰
 const SUPABASE_URL = "https://vumrenvgdbjeaiuvnuzx.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ1bXJlbnZnZGJqZWFpdXZudXp4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4MTA1Mjg0NywiZXhwIjoyMDk2NjI4ODQ3fQ.K7kgUEGauqC0bMe7KDMYttWqhQnlBbxLEgquWOhde4s";
+const SUPABASE_ANON_KEY = "IUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ1bXJlbnZnZGJqZWFpdXZudXp4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEwNTI4NDcsImV4cCI6MjA5NjYyODg0N30.Rn_WmoNaz1-PfHDznfJY0g_UU-kWs3UR4Wd5e2SchEo";
 const FIXED_ROOM_ID = "tokyo2026_family";
+const TABLE_NAME = "tokyo-travel-app"; // 🌟 已修正為您截圖中真實的資料表名稱
 
 createApp({
     setup() {
@@ -347,7 +346,6 @@ createApp({
         const exchangeRate = ref(0.051); 
         const calcInputJPY = ref(null);
         
-        // 🌟 雲端連線狀態操控
         const isSynced = ref(false);
         let supabaseClient = null;
         let cloudChannel = null;
@@ -370,7 +368,6 @@ createApp({
             {id:'shopping', name:'購物清單', icon:'🧺'}, {id:'wallet', name:'花費紀錄', icon:'💰'}
         ];
         
-        // 預設行程（當雲端完全沒資料時的初始範本）
         const defaultEvents = [
             { id: 1, dayIdx: 0, category: '航班', location: '成田空港', time: '14:55', flightNum: 'HX608', flightDep: 'HKG', flightArr: 'NRT', flightArrTime: '20:10', flightDuration: '4h 15m', note: '抵達成田空港\n辦理入境提取行李。', transTime: '50', transMode: 'transit' },
             { id: 2, dayIdx: 0, category: '住宿', location: '東京淺草橫綱Hotel', time: '21:30', note: '辦理入住手續', transTime: '15', transMode: 'walk' },
@@ -396,20 +393,13 @@ createApp({
             return isEditMode.value ? '📝 編輯行程項目' : '✨ 新增行程項目';
         });
 
-        // 🌟 核心：自動免密碼同步連線與即時監聽機制
         const connectToSupabase = async () => {
             try {
-                if (SUPABASE_URL.includes("你的專案代碼")) {
-                    console.log("請先填入正確的 Supabase URL 與 ANON KEY");
-                    loadLocalBackup();
-                    return;
-                }
-
                 supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
                 // 1. 率先去雲端撈取最新資料
                 const { data, error } = await supabaseClient
-                    .from('trips')
+                    .from(TABLE_NAME)
                     .select('*')
                     .eq('room_id', FIXED_ROOM_ID)
                     .maybeSingle();
@@ -421,18 +411,18 @@ createApp({
                     saveLocalBackup();
                 } else {
                     // 如果資料庫全空，自動初始化建立一筆
-                    await supabaseClient.from('trips').insert([{
+                    await supabaseClient.from(TABLE_NAME).insert([{
                         room_id: FIXED_ROOM_ID, events: events.value, shopping_list: shoppingList.value, expenses: expenses.value
                     }]);
                 }
                 isSynced.value = true;
 
-                // 2. 建立新版 Realtime 即時雙向廣播通道
+                // 2. 監聽 Realtime 即時變更通知
                 if (cloudChannel) supabaseClient.removeChannel(cloudChannel);
                 
                 cloudChannel = supabaseClient
-                    .channel(`public:trips:room_${FIXED_ROOM_ID}`)
-                    .on('postgres_changes', { event: '*', schema: 'public', table: 'trips', filter: `room_id=eq.${FIXED_ROOM_ID}` }, (payload) => {
+                    .channel(`public:${TABLE_NAME}:room_${FIXED_ROOM_ID}`)
+                    .on('postgres_changes', { event: '*', schema: 'public', table: TABLE_NAME, filter: `room_id=eq.${FIXED_ROOM_ID}` }, (payload) => {
                         const next = payload.new;
                         if (next) {
                             if (next.events) events.value = next.events;
@@ -452,13 +442,12 @@ createApp({
             }
         };
 
-        // 🌟 當資料有任何新增/修改/刪除時，自動推送更新至 Supabase 雲端
         const updateCloud = async () => {
             saveLocalBackup();
             if (!isSynced.value || !supabaseClient) return;
             try {
                 await supabaseClient
-                    .from('trips')
+                    .from(TABLE_NAME)
                     .update({
                         events: events.value,
                         shopping_list: shoppingList.value,
@@ -550,7 +539,7 @@ createApp({
         const totalJPY = computed(() => expenses.value.reduce((sum, item) => sum + (item.amount || 0), 0));
         const totalHKD = computed(() => totalJPY.value * exchangeRate.value);
         const getPrevDayHotel = (day) => day === 0 ? null : "東京淺草橫綱Hotel";
-        const triggerGoogleMap = (loc) => window.open(`http://maps.google.com/?q=${encodeURIComponent(loc)}`, '_blank');
+        const triggerGoogleMap = (loc) => window.open(`http://googleusercontent.com/maps.google.com/?q=${encodeURIComponent(loc)}`, '_blank');
         const getCategoryClass = (cat) => ({ '景點':'bg-rose-100 text-rose-700','住宿':'bg-emerald-100 text-emerald-700','美食':'bg-amber-100 text-amber-700' }[cat] || 'bg-slate-100');
 
         const triggerFAB = () => {
