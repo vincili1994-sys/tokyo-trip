@@ -9,7 +9,6 @@
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&display=swap" rel="stylesheet">
     
-    <!-- 🌟 引入 Supabase 官方網頁版 SDK -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
     <style>
@@ -48,7 +47,6 @@
             </div>
         </div>
 
-        <!-- 🌟 雲端連線狀態列 -->
         <div class="flex items-center justify-between bg-sky-900/40 p-2 rounded-xl border border-sky-800 text-xs my-1">
             <span class="text-amber-200 font-bold flex-shrink-0">🌐 雲端多機同步狀態：</span>
             <div class="flex items-center gap-1.5">
@@ -86,10 +84,10 @@
                     </div>
                 </div>
                 <div class="text-right">
-                    <span class="text-base font-bold text-sky-900 block">
+                    <span class="text-base font-bold text-sky-900 block whitespace-nowrap">
                         {{ activeWeather.tempInfo }}
                     </span>
-                    <span v-if="activeWeather.pop !== null" class="text-[10px] bg-sky-100 text-sky-800 px-1.5 py-0.5 rounded-md font-bold block mt-0.5">
+                    <span v-if="activeWeather.pop !== null" class="text-[10px] bg-sky-100 text-sky-800 px-1.5 py-0.5 rounded-md font-bold block mt-0.5 whitespace-nowrap">
                         💧 降雨率 {{ activeWeather.pop }}%
                     </span>
                 </div>
@@ -335,11 +333,9 @@
 <script>
 const { createApp, ref, computed, onMounted, nextTick } = Vue;
 
-// 🌟 請務補檢查並重新貼上正確的驗證憑證
 const SUPABASE_URL = "https://vumrenvgdbjeaiuvnuzx.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ1bXJlbnZnZGJqZWFpdXZudXp4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEwNTI4NDcsImV4cCI6MjA5NjYyODg0N30.Rn_WmoNaz1-PfHDznfJY0g_UU-kWs3UR4Wd5e2SchEo";
 const FIXED_ROOM_ID = "tokyo2026_family";
-const TABLE_NAME = "trips";
 
 createApp({
     setup() {
@@ -352,17 +348,16 @@ createApp({
         let supabaseClient = null;
         let cloudChannel = null;
 
-        const weatherDataStore = ref({
-            live: { temp: '--', desc: '讀取中...', icon: '⏳', pop: 0 },
-            forecasts: [] 
-        });
+        // 🌤️ 用來儲存從 API 獲得的未來預報資料庫
+        const weatherDatabase = ref({});
 
+        // 🌟 東京五日遊日期設定
         const days = [
-            { weekShort:'Mon', dateNum:'15', title:'抵達與淺草寺散步', dayValue: 15 },
-            { weekShort:'Tue', dateNum:'16', title:'御殿場 Outlet', dayValue: 16 },
-            { weekShort:'Wed', dateNum:'17', title:'築地與分頭活動', dayValue: 17 },
-            { weekShort:'Thu', dateNum:'18', title:'晴空塔與銀座', dayValue: 18 },
-            { weekShort:'Fri', dateNum:'19', title:'成田機場回港', dayValue: 19 }
+            { weekShort:'Mon', dateNum:'15', title:'抵達與淺草寺散步', dateStr: '2026-06-15' },
+            { weekShort:'Tue', dateNum:'16', title:'御殿場 Outlet', dateStr: '2026-06-16' },
+            { weekShort:'Wed', dateNum:'17', title:'築地與分頭活動', dateStr: '2026-06-17' },
+            { weekShort:'Thu', dateNum:'18', title:'晴空塔與銀座', dateStr: '2026-06-18' },
+            { weekShort:'Fri', dateNum:'19', title:'成田機場回港', dateStr: '2026-06-19' }
         ];
 
         const tabs = [
@@ -373,7 +368,14 @@ createApp({
         const defaultEvents = [
             { id: 1, dayIdx: 0, category: '航班', location: '成田空港', time: '14:55', flightNum: 'HX608', flightDep: 'HKG', flightArr: 'NRT', flightArrTime: '20:10', flightDuration: '4h 15m', note: '抵達成田空港\n辦理入境提取行李。', transTime: '50', transMode: 'transit' },
             { id: 2, dayIdx: 0, category: '住宿', location: '東京淺草橫綱Hotel', time: '21:30', note: '辦理入住手續', transTime: '15', transMode: 'walk' },
-            { id: 3, dayIdx: 0, category: '美食', location: '淺刻附近拉麵/居酒屋', time: '22:00', note: '宵夜與放鬆', transTime: '0', transMode: 'walk' }
+            { id: 3, dayIdx: 0, category: '美食', location: '淺草附近拉麵/居酒屋', time: '22:00', note: '宵夜與放鬆', transTime: '0', transMode: 'walk' },
+            { id: 4, dayIdx: 1, category: '景點', location: '御殿場 Premium Outlets', time: '10:00', openTime: '10:00-20:00', note: '瘋狂購物行程！', transTime: '120', transMode: 'drive' },
+            { id: 5, dayIdx: 2, category: '美食', location: '築地場外市場', time: '08:30', note: '早餐享用海鮮丼與玉子燒', transTime: '30', transMode: 'transit' },
+            { id: 6, dayIdx: 2, category: '景點', location: '分頭活動 / 自由逛街', time: '13:00', note: '各自安排想去的景點', transTime: '40', transMode: 'transit' },
+            { id: 7, dayIdx: 3, category: '景點', location: '東京晴空塔 (SKYTREE)', time: '09:35', ticketPrice: '已預約 09:30 門票', note: '登高看東京全景', transTime: '30', transMode: 'transit' },
+            { id: 8, dayIdx: 3, category: '景點', location: '銀座 / 有樂町散策', time: '14:00', note: '逛街精品、無印良品旗艦店', transTime: '25', transMode: 'transit' },
+            { id: 9, dayIdx: 4, category: '景點', location: '淺草寺周邊最後巡禮', time: '09:00', note: '買手信、補貨', transTime: '60', transMode: 'transit' },
+            { id: 10, dayIdx: 4, category: '航班', location: '成田空港', time: '15:30', flightNum: 'HX609', flightDep: 'NRT', flightArr: 'HKG', flightArrTime: '21:00', flightDuration: '4h 30m', note: '起飛回港，結束美好旅程', transTime: '0', transMode: 'transit' }
         ];
 
         const events = ref([...defaultEvents]);
@@ -388,7 +390,55 @@ createApp({
             return isEditMode.value ? '📝 編輯行程項目' : '✨ 新增行程項目';
         });
 
-        // 🌟 核心：先載入本機備份，保證重整不消失
+        const connectToSupabase = async () => {
+            try {
+                supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                const { data, error } = await supabaseClient
+                    .from('trips')
+                    .select('*')
+                    .eq('room_id', FIXED_ROOM_ID)
+                    .maybeSingle();
+
+                if (data) {
+                    if (data.events) events.value = data.events;
+                    if (data.shopping_list) shoppingList.value = data.shopping_list;
+                    if (data.expenses) expenses.value = data.expenses;
+                    saveLocalBackup();
+                } else {
+                    await supabaseClient.from('trips').insert([{
+                        room_id: FIXED_ROOM_ID, events: events.value, shopping_list: shoppingList.value, expenses: expenses.value
+                    }]);
+                }
+                isSynced.value = true;
+
+                if (cloudChannel) supabaseClient.removeChannel(cloudChannel);
+                cloudChannel = supabaseClient
+                    .channel(`public:trips:room_${FIXED_ROOM_ID}`)
+                    .on('postgres_changes', { event: '*', schema: 'public', table: 'trips', filter: `room_id=eq.${FIXED_ROOM_ID}` }, (payload) => {
+                        const next = payload.new;
+                        if (next) {
+                            if (next.events) events.value = next.events;
+                            if (next.shopping_list) shoppingList.value = next.shopping_list;
+                            if (next.expenses) expenses.value = next.expenses;
+                            saveLocalBackup();
+                        }
+                    })
+                    .subscribe();
+            } catch (err) {
+                console.error("雲端連線失敗", err);
+                loadLocalBackup();
+                isSynced.value = false;
+            }
+        };
+
+        const updateCloud = async () => {
+            saveLocalBackup();
+            if (!isSynced.value || !supabaseClient) return;
+            try {
+                await supabaseClient.from('trips').update({ events: events.value, shopping_list: shoppingList.value, expenses: expenses.value }).eq('room_id', FIXED_ROOM_ID);
+            } catch (e) { console.error(e); }
+        };
+
         const saveLocalBackup = () => {
             localStorage.setItem('trip_events', JSON.stringify(events.value));
             localStorage.setItem('sh_list', JSON.stringify(shoppingList.value));
@@ -404,142 +454,138 @@ createApp({
             if (localExp) expenses.value = JSON.parse(localExp);
         };
 
-        const connectToSupabase = async () => {
-            // 第一步：先用本機既有資料撐住，避免變空白
-            loadLocalBackup();
-
+        // 🔄 透過 API 獲取最新的東京預報與即時數據
+        const fetchTokyoWeatherForecast = async () => {
             try {
-                supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-                // 2. 至雲端抓取最新資料
-                const { data, error } = await supabaseClient
-                    .from(TABLE_NAME)
-                    .select('*')
-                    .eq('room_id', FIXED_ROOM_ID)
-                    .maybeSingle();
-
-                if (error) throw error;
-
-                if (data) {
-                    // 雲端有資料，且不為空時才進行覆蓋，防止洗掉本機
-                    if (data.events && data.events.length > 0) events.value = data.events;
-                    if (data.shopping_list) shoppingList.value = data.shopping_list;
-                    if (data.expenses) expenses.value = data.expenses;
-                    saveLocalBackup();
-                } else {
-                    // 如果雲端完全找不到這間房的紀錄，就把現在的資料初始化上去
-                    await supabaseClient.from(TABLE_NAME).insert([{
-                        room_id: FIXED_ROOM_ID, events: events.value, shopping_list: shoppingList.value, expenses: expenses.value
-                    }]);
-                }
-                isSynced.value = true;
-
-                // 3. 綁定廣播監聽頻道
-                if (cloudChannel) supabaseClient.removeChannel(cloudChannel);
+                const res = await fetch("https://api.open-meteo.com/v1/forecast?latitude=35.6895&longitude=139.6917&current=temperature_2m,weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&hourly=precipitation_probability&timezone=Asia%2FTokyo");
+                const data = await res.json();
                 
-                // 為了防止不同手機的頻道名衝突，宣告一個獨立動態道
-                const channelId = `room_channel_${Math.floor(Math.random() * 10000)}`;
-                cloudChannel = supabaseClient
-                    .channel(channelId)
-                    .on(
-                        'postgres_changes', 
-                        { event: 'UPDATE', schema: 'public', table: TABLE_NAME, filter: `room_id=eq.${FIXED_ROOM_ID}` }, 
-                        (payload) => {
-                            console.log("收到雲端同步更新事件！", payload);
-                            const next = payload.new;
-                            if (next) {
-                                if (next.events) events.value = next.events;
-                                if (next.shopping_list) shoppingList.value = next.shopping_list;
-                                if (next.expenses) expenses.value = next.expenses;
-                                saveLocalBackup();
-                            }
-                        }
-                    )
-                    .subscribe((status) => {
-                        console.log("Realtime Channel Status:", status);
+                if (data && data.daily) {
+                    const db = {};
+                    
+                    // 1. 解析未來 7 天的每日精準天氣預報
+                    data.daily.time.forEach((dateStr, index) => {
+                        const code = data.daily.weather_code[index];
+                        const maxTemp = Math.round(data.daily.temperature_2m_max[index]);
+                        const minTemp = Math.round(data.daily.temperature_2m_min[index]);
+                        const pop = data.daily.precipitation_probability_max[index];
+                        
+                        let desc = "多雲時晴"; let icon = "⛅"; let badgeClass = "bg-amber-500";
+                        if (code === 0) { desc = "晴朗無雲"; icon = "☀️"; badgeClass = "bg-orange-500"; }
+                        else if (code >= 1 && code <= 3) { desc = "晴間多雲"; icon = "🌤️"; badgeClass = "bg-sky-500"; }
+                        else if (code >= 45 && code <= 48) { desc = "大霧籠罩"; icon = "🌫️"; badgeClass = "bg-slate-500"; }
+                        else if (code >= 51 && code <= 67) { desc = "有雨偏涼"; icon = "🌧️"; badgeClass = "bg-rose-500"; }
+                        else if (code >= 71 && code <= 77) { desc = "有雪注意"; icon = "❄️"; badgeClass = "bg-indigo-400"; }
+                        else if (code >= 80 && code <= 82) { desc = "短暫陣雨"; icon = "🌦️"; badgeClass = "bg-violet-500"; }
+
+                        db[dateStr] = {
+                            typeTitle: '📅 預報模式',
+                            badgeClass: badgeClass,
+                            icon: icon,
+                            desc: `當天預計${desc}，出門記得確認穿搭！`,
+                            tempInfo: `${minTemp}°C ~ ${maxTemp}°C`,
+                            pop: pop
+                        };
                     });
 
+                    // 2. 如果今天正好在旅行期間，將其升級為「現場即時」一小時數據
+                    if (data.current) {
+                        const todayStr = new Date().toISOString().split('T')[0];
+                        const currentTemp = Math.round(data.current.temperature_2m);
+                        const code = data.current.weather_code;
+                        const currentHour = new Date().getHours();
+                        const currentPop = data.hourly ? data.hourly.precipitation_probability[currentHour] : 0;
+                        
+                        let desc = "多雲時晴"; let icon = "⛅"; let badgeClass = "bg-amber-500";
+                        if (code === 0) { desc = "晴朗無雲"; icon = "☀️"; badgeClass = "bg-orange-500"; }
+                        else if (code >= 1 && code <= 3) { desc = "晴間多雲"; icon = "🌤️"; badgeClass = "bg-sky-500"; }
+                        else if (code >= 45 && code <= 48) { desc = "大霧"; icon = "🌫️"; badgeClass = "bg-slate-500"; }
+                        else if (code >= 51 && code <= 67) { desc = "正在下雨"; icon = "🌧️"; badgeClass = "bg-rose-500"; }
+                        else if (code >= 71 && code <= 77) { desc = "正在下雪"; icon = "❄️"; badgeClass = "bg-indigo-400"; }
+                        else if (code >= 80 && code <= 82) { desc = "陣雨來襲"; icon = "🌦️"; badgeClass = "bg-violet-500"; }
+
+                        db[todayStr] = {
+                            typeTitle: '🇯🇵 現場即時',
+                            badgeClass: badgeClass,
+                            icon: icon,
+                            desc: `目前東京正值${desc}，多機連線運作中！`,
+                            tempInfo: `${currentTemp}°C`,
+                            pop: currentPop
+                        };
+                    }
+
+                    weatherDatabase.value = db;
+                }
             } catch (err) {
-                console.error("Supabase 整合連線錯誤:", err);
-                isSynced.value = false;
+                console.error("預報資料讀取失敗:", err);
             }
         };
 
-        const updateCloud = async () => {
-            // 不管雲端成不成功，本機一定要先存起來
-            saveLocalBackup();
-            if (!isSynced.value || !supabaseClient) return;
-            try {
-                const { error } = await supabaseClient
-                    .from(TABLE_NAME)
-                    .update({
-                        events: JSON.parse(JSON.stringify(events.value)),
-                        shopping_list: JSON.parse(JSON.stringify(shoppingList.value)),
-                        expenses: JSON.parse(JSON.stringify(expenses.value))
-                    })
-                    .eq('room_id', FIXED_ROOM_ID);
-                if (error) console.error("雲端更新失敗回應:", error);
-            } catch (e) {
-                console.error("推送至雲端發生未預期錯誤:", e);
-            }
-        };
-
-        // --- 業務操作邏輯修正 ---
-        const saveEvent = () => {
-            if (!modalData.value.location || !modalData.value.time) { alert('請填寫地點與時間！'); return; }
-            
-            let tempEvents = [...events.value];
-            if (isEditMode.value) {
-                const idx = tempEvents.findIndex(e => e.id === currentTargetEventId);
-                if (idx !== -1) tempEvents[idx] = { ...modalData.value };
-            } else {
-                const newId = tempEvents.length ? Math.max(...tempEvents.map(e => e.id)) + 1 : 1;
-                tempEvents.push({ ...modalData.value, id: newId, dayIdx: selectedDay.value });
-            }
-            tempEvents.sort((a, b) => a.time.localeCompare(b.time));
-            
-            events.value = tempEvents; // 強制引發 Vue 響應式追蹤
-            updateCloud(); 
-            closeModal();
-        };
-
-        const deleteEvent = () => {
-            events.value = events.value.filter(e => e.id !== currentTargetEventId);
-            updateCloud(); closeModal();
-        };
-
-        const saveShoppingItem = () => {
-            if (!modalData.value.name) return;
-            shoppingList.value.push({ id: Date.now(), name: modalData.value.name, image: modalData.value.image, checked: false });
-            updateCloud(); closeModal();
-        };
-
-        const deleteShoppingItem = (id) => {
-            shoppingList.value = shoppingList.value.filter(s => s.id !== id);
-            updateCloud();
-        };
-
-        const saveExpenseItem = () => {
-            if (!modalData.value.name || !modalData.value.amount) return;
-            expenses.value.push({ id: Date.now(), category: modalData.value.category, name: modalData.value.name, amount: modalData.value.amount, date: modalData.value.date });
-            updateCloud(); closeModal();
-        };
-
-        const deleteExpenseItem = (id) => {
-            expenses.value = expenses.value.filter(e => e.id !== id);
-            updateCloud();
-        };
-
-        // --- 其他輔助功能維持 ---
+        // 🌟 核心動態天氣邏輯：優先回傳「即時/預報」；若超出範圍則切換為精準的「當季氣候預測」
         const activeWeather = computed(() => {
-            return { typeTitle: '🌸 東京天氣', badgeClass: 'bg-rose-500', icon: '☀️', desc: '東京今日晴朗，出門記得帶件薄外套與雨傘喔！', tempInfo: '18°C ~ 25°C', pop: 10 };
+            const targetDayObj = days[selectedDay.value];
+            if (!targetDayObj) return { typeTitle: '⏳ 載入中', badgeClass: 'bg-slate-400', icon: '⏳', desc: '正在準備資料...', tempInfo: '--°C', pop: null };
+            
+            const targetDateStr = targetDayObj.dateStr; // 例如 '2026-06-15'
+            
+            // 1. 如果 API 有資料（表示進入了旅行日前 7 天或當天），直接使用
+            if (weatherDatabase.value && weatherDatabase.value[targetDateStr]) {
+                return weatherDatabase.value[targetDateStr];
+            }
+            
+            // 2. 備用機制：若 API 查不到（提早打開），則根據旅行日期所屬的月份回傳「當季氣候預測」
+            // 這裡抓取 dateStr 的月份（'2026-06-15' 提取出 6 月）
+            const month = parseInt(targetDateStr.split('-')[1]);
+            
+            if (month >= 6 && month <= 8) {
+                // ☀️ 針對 6, 7, 8 月：東京夏季 / 梅雨初夏季節
+                return {
+                    typeTitle: '🌸 當季天氣預測',
+                    badgeClass: 'bg-emerald-500',
+                    icon: '🌿',
+                    desc: '東京初夏梅雨交替期，常有短暫陣雨，建議攜帶輕便摺疊傘！',
+                    tempInfo: '20°C ~ 26°C',
+                    pop: 45 // 歷史六月平均降雨機率
+                };
+            } else if (month >= 9 && month <= 11) {
+                // 🍁 針對 9, 10, 11 月：東京秋季
+                return {
+                    typeTitle: '🍁 當季天氣預測',
+                    badgeClass: 'bg-orange-500',
+                    icon: '🍁',
+                    desc: '東京秋高氣爽，氣候非常舒適乾燥，適合戶外逛街健行！',
+                    tempInfo: '15°C ~ 22°C',
+                    pop: 25
+                };
+            } else if (month === 12 || month === 1 || month === 2) {
+                // ❄️ 針對 12, 1, 2 月：東京冬季
+                return {
+                    typeTitle: '❄️ 當季天氣預測',
+                    badgeClass: 'bg-sky-600',
+                    icon: '❄️',
+                    desc: '東京冬季寒冷乾燥、晴天率高，出門請加強防風羽絨外套保暖！',
+                    tempInfo: '3°C ~ 10°C',
+                    pop: 10
+                };
+            } else {
+                // 🌸 針對 3, 4, 5 月：東京春季
+                return {
+                    typeTitle: '🌸 當季天氣預測',
+                    badgeClass: 'bg-pink-400',
+                    icon: '🌸',
+                    desc: '東京春暖花開櫻花季，日夜溫差較大，建議採用洋蔥式穿搭法！',
+                    tempInfo: '10°C ~ 18°C',
+                    pop: 35
+                };
+            }
         });
 
         const currentDayEvents = computed(() => events.value.filter(e => e.dayIdx === selectedDay.value));
         const totalJPY = computed(() => expenses.value.reduce((sum, item) => sum + (item.amount || 0), 0));
         const totalHKD = computed(() => totalJPY.value * exchangeRate.value);
         const getPrevDayHotel = (day) => day === 0 ? null : "東京淺草橫綱Hotel";
-		const triggerGoogleMap = (loc) => window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(loc)}`, '_blank');  
+        
+        const triggerGoogleMap = (loc) => window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(loc)}`, '_blank');
         const getCategoryClass = (cat) => ({ '景點':'bg-rose-100 text-rose-700','住宿':'bg-emerald-100 text-emerald-700','美食':'bg-amber-100 text-amber-700' }[cat] || 'bg-slate-100');
 
         const triggerFAB = () => {
@@ -560,6 +606,36 @@ createApp({
         };
 
         const closeModal = () => { showModal.value = false; };
+
+        const saveEvent = () => {
+            if (!modalData.value.location || !modalData.value.time) { alert('請填寫地點與時間！'); return; }
+            if (isEditMode.value) {
+                const idx = events.value.findIndex(e => e.id === currentTargetEventId);
+                if (idx !== -1) events.value[idx] = { ...modalData.value };
+            } else {
+                const newId = events.value.length ? Math.max(...events.value.map(e => e.id)) + 1 : 1;
+                events.value.push({ ...modalData.value, id: newId, dayIdx: selectedDay.value });
+            }
+            events.value.sort((a, b) => a.time.localeCompare(b.time));
+            updateCloud(); closeModal();
+        };
+
+        const deleteEvent = () => {
+            events.value = events.value.filter(e => e.id !== currentTargetEventId);
+            updateCloud(); closeModal();
+        };
+
+        const saveShoppingItem = () => {
+            if (!modalData.value.name) return;
+            shoppingList.value.push({ id: Date.now(), name: modalData.value.name, image: modalData.value.image, checked: false });
+            updateCloud(); closeModal();
+        };
+
+        const deleteShoppingItem = (id) => {
+            shoppingList.value = shoppingList.value.filter(s => s.id !== id);
+            updateCloud();
+        };
+
         const handleImageUpload = (e) => {
             const file = e.target.files[0]; if (!file) return;
             const reader = new FileReader();
@@ -567,8 +643,26 @@ createApp({
             reader.readAsDataURL(file);
         };
 
+        const saveExpenseItem = () => {
+            if (!modalData.value.name || !modalData.value.amount) return;
+            expenses.value.push({ id: Date.now(), category: modalData.value.category, name: modalData.value.name, amount: modalData.value.amount, date: modalData.value.date });
+            updateCloud(); closeModal();
+        };
+
+        const deleteExpenseItem = (id) => {
+            expenses.value = expenses.value.filter(e => e.id !== id);
+            updateCloud();
+        };
+
+        const initDragDrop = () => {
+            const el = document.getElementById('drag-container');
+            if (el) { Sortable.create(el, { animation: 200, disabled: true }); }
+        };
+
         onMounted(() => {
+            fetchTokyoWeatherForecast();
             connectToSupabase();
+            nextTick(() => { initDragDrop(); });
         });
 
         return { 
