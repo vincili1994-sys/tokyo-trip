@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>東京私旅 - 雲端自動同步版</title>
+    <title>東京私旅 - 雲端多機同步版</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
@@ -12,10 +12,17 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
     <style>
-        body { font-family: 'Noto Sans JP', sans-serif; background-color: #fee2e2; -webkit-tap-highlight-color: transparent; }
-        .bg-custom-travel {
-            background-image: linear-gradient(to bottom, rgba(255, 254, 250, 0.88), rgba(254, 249, 235, 0.92)), url('Gemini_Generated_Image_ng161ang161ang16.png');
-            background-size: cover; background-position: center; background-attachment: fixed;
+        body {
+            font-family: 'Noto Sans JP', sans-serif;
+            background-color: #fee2e2;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .bg-chiikawa {
+            background-image: linear-gradient(to bottom, rgba(255, 254, 250, 0.88), rgba(254, 249, 235, 0.92)), 
+                              url('Gemini_Generated_Image_ng161ang161ang16.png');
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
         }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; overflow-x: auto; scroll-behavior: smooth; -webkit-overflow-scrolling: touch; }
@@ -25,20 +32,22 @@
 </head>
 <body class="text-slate-700 antialiased">
 
-<div id="app" class="max-w-md mx-auto min-h-screen bg-custom-travel flex flex-col shadow-2xl relative pb-24 overflow-x-hidden">
+<div id="app" class="max-w-md mx-auto min-h-screen bg-chiikawa flex flex-col shadow-2xl relative pb-24 overflow-x-hidden">
     
     <header class="bg-sky-950 p-5 pt-6 pb-3 sticky top-0 z-40 border-b border-sky-900 shadow-md">
         <div class="flex justify-between items-center mb-2">
             <div>
                 <span class="text-[10px] tracking-widest text-sky-300 block mb-0.5">🌟 FAMILY TOKYO 2026 🍡</span>
-                <h1 class="text-lg font-bold tracking-tight text-amber-100 flex items-center gap-1.5">東京。五日慢遊購物團</h1>
+                <h1 class="text-lg font-bold tracking-tight text-amber-100 flex items-center gap-1.5">
+                    東京。五日慢遊購物團
+                </h1>
             </div>
             <div class="w-14 h-14 rounded-full overflow-hidden border-2 border-amber-200 shadow-md flex-shrink-0 bg-white">
                 <img src="Gemini_Generated_Image_xy1nwaxy1nwaxy1n.png" alt="ICON" class="w-full h-full object-cover">
             </div>
         </div>
 
-        <div class="flex items-center justify-between bg-sky-900/40 p-2.5 rounded-xl border border-sky-800 text-xs">
+        <div class="flex items-center justify-between bg-sky-900/40 p-2 rounded-xl border border-sky-800 text-xs my-1">
             <span class="text-amber-200 font-bold flex-shrink-0">🌐 雲端多機同步狀態：</span>
             <div class="flex items-center gap-1.5">
                 <span v-if="isSynced" class="text-emerald-400 font-bold animate-pulse">● 已自動連線</span>
@@ -46,51 +55,56 @@
             </div>
         </div>
 
-        <div v-if="currentTab === 'itinerary'" class="flex items-center gap-2 mt-3">
-            <div ref="scrollContainer" class="flex gap-2.5 overflow-x-auto no-scrollbar pb-1 flex-1 snap-x scroll-smooth">
-                <button 
-                    v-for="(day, index) in days" :key="index" :id="'day-btn-' + index" @click="scrollToDay(index)"
-                    :class="selectedDay === index ? 'bg-amber-100 text-sky-950 font-bold scale-105 shadow-md border-amber-200 snap-center' : 'bg-sky-900/60 text-sky-200 border-sky-800/80 snap-center'"
-                    class="flex-shrink-0 px-3.5 py-1.5 rounded-2xl text-center transition-all duration-300 min-w-[75px] border"
-                >
-                    <span class="block text-sm font-bold tracking-wide uppercase">{{ day.weekShort }}</span>
-                    <span class="text-[11px] opacity-80 block mt-0.5">{{ day.dateNum }}</span>
-                </button>
-            </div>
-            <button @click="openDayManager" class="bg-amber-400 text-sky-950 p-2.5 rounded-2xl text-base shadow-md font-bold flex-shrink-0 border border-amber-300 hover:scale-105 transition-all">📅</button>
+        <div v-if="currentTab === 'itinerary'" class="flex gap-2.5 overflow-x-auto no-scrollbar mt-3 pb-1">
+            <button 
+                v-for="(day, index) in days" 
+                :key="index"
+                @click="selectedDay = index"
+                :class="selectedDay === index ? 'bg-amber-100 text-sky-950 font-bold scale-105 shadow-md border-amber-200' : 'bg-sky-900/60 text-sky-200 border-sky-800/80'"
+                class="flex-shrink-0 px-3.5 py-1.5 rounded-2xl text-center transition-all duration-300 min-w-[75px] border"
+            >
+                <span class="block text-sm font-bold tracking-wide uppercase">{{ day.weekShort }}</span>
+                <span class="text-[11px] opacity-80 block mt-0.5">{{ day.dateNum }}</span>
+            </button>
         </div>
     </header>
 
     <main class="flex-1 p-4">
 
         <div v-if="currentTab === 'itinerary'" class="space-y-4 animate-fade-in">
-            <div v-if="days.length > 0" class="bg-white/85 backdrop-blur-md rounded-2xl p-4 border border-rose-100 shadow-sm flex justify-between items-center">
+            
+            <div class="bg-white/85 backdrop-blur-md rounded-2xl p-4 border border-rose-100 shadow-sm flex justify-between items-center">
                 <div class="flex items-center gap-3">
                     <span class="text-3xl">{{ activeWeather.icon }}</span>
                     <div>
-                        <h4 class="text-xs font-bold px-1.5 py-0.5 rounded text-white inline-block mb-1" :class="activeWeather.badgeClass">{{ activeWeather.typeTitle }}</h4>
+                        <h4 class="text-xs font-bold px-1.5 py-0.5 rounded text-white inline-block mb-1" :class="activeWeather.badgeClass">
+                            {{ activeWeather.typeTitle }}
+                        </h4>
                         <p class="text-sm font-bold text-slate-700">{{ activeWeather.desc }}</p>
                     </div>
                 </div>
                 <div class="text-right">
-                    <span class="text-base font-bold text-sky-900 block">{{ activeWeather.tempInfo }}</span>
-                    <span v-if="activeWeather.pop !== null" class="text-[10px] bg-sky-100 text-sky-800 px-1.5 py-0.5 rounded-md font-bold block mt-0.5">💧 降雨率 {{ activeWeather.pop }}%</span>
+                    <span class="text-base font-bold text-sky-900 block">
+                        {{ activeWeather.tempInfo }}
+                    </span>
+                    <span v-if="activeWeather.pop !== null" class="text-[10px] bg-sky-100 text-sky-800 px-1.5 py-0.5 rounded-md font-bold block mt-0.5">
+                        💧 降雨率 {{ activeWeather.pop }}%
+                    </span>
                 </div>
             </div>
 
-            <div v-if="days.length > 0" class="bg-sky-900/90 p-3 rounded-xl border border-sky-800 text-center shadow-sm">
-                <span class="text-xs text-amber-100 font-medium">✨ 今日主題：{{ days[selectedDay]?.title || '未設定主題' }} ✨</span>
+            <div class="bg-sky-900/90 p-3 rounded-xl border border-sky-800 text-center shadow-sm">
+                <span class="text-xs text-amber-100 font-medium">✨ 今日主題：{{ days[selectedDay]?.title }} ✨</span>
             </div>
 
-            <div v-if="days.length === 0" class="text-center text-xs text-slate-400 py-12 bg-white/80 rounded-2xl border p-4 shadow-sm">📅 目前還沒有任何旅遊日子喔！請點擊右上角的 📅 按鈕來新增天數。</div>
-            <div v-else-if="currentDayEvents.length === 0" class="text-center text-xs text-slate-400 py-12 bg-white/80 rounded-2xl border p-4 shadow-sm">📍 今日尚未安排行程，點擊右下角「＋」開始規劃吧！</div>
-
-            <div v-if="days.length > 0" id="drag-container" class="space-y-3 relative">
-                <div v-for="(event, idx) in currentDayEvents" :key="event.id" class="relative">
+            <div id="drag-container" class="space-y-3 relative">
+                <div v-for="(event, idx) in currentDayEvents" :key="event.id" :data-id="event.id" class="relative">
                     
                     <div v-if="idx > 0 || (selectedDay > 0 && getPrevDayHotel(selectedDay))" class="my-3 mx-4 flex items-center justify-between bg-white/80 backdrop-blur-sm px-4 py-2 rounded-xl border border-slate-200/60 text-xs text-slate-500">
                         <div class="flex items-center gap-1.5 font-medium">
-                            <span>{{ event.transMode === 'walk' ? '🚶‍♂️ 步行' : event.transMode === 'drive' ? '🚗 開車' : '🚌 大眾運輸' }}</span>
+                            <span v-if="event.transMode === 'walk'">🚶‍♂️ 步行</span>
+                            <span v-else-if="event.transMode === 'drive'">🚗 開車</span>
+                            <span v-else>🚌 大眾運輸</span>
                             <span>往目的地約 {{ event.transTime || '20' }} 分鐘</span>
                         </div>
                         <div class="flex gap-1 bg-slate-200/60 p-0.5 rounded-md">
@@ -100,7 +114,9 @@
                         </div>
                     </div>
 
-                    <div v-if="idx === 0 && selectedDay > 0" class="text-[10px] text-center bg-amber-50 text-amber-800 py-1.5 rounded-md mb-2 border border-amber-100">🏨 起點：{{ getPrevDayHotel(selectedDay) }}</div>
+                    <div v-if="idx === 0 && selectedDay > 0" class="text-[10px] text-center bg-amber-50 text-amber-800 py-1.5 rounded-md mb-2 border border-amber-100">
+                        🏨 起點：{{ getPrevDayHotel(selectedDay) }}
+                    </div>
 
                     <div v-if="event.category === '航班'" class="bg-gradient-to-r from-sky-900 to-indigo-950 text-white p-4 rounded-2xl shadow-md cursor-pointer" @click="openModal('event', event)">
                         <div class="flex justify-between items-center mb-2">
@@ -145,17 +161,29 @@
 
             <div class="bg-white/90 p-4 rounded-2xl border border-slate-200 shadow-sm space-y-3">
                 <h3 class="text-sm font-bold text-slate-800 border-b pb-2 flex items-center gap-1.5">🏨 酒店資訊</h3>
-                <p class="text-xs text-slate-600"><strong>名稱：</strong>東京淺草橫綱Hotel</p>
+                <p class="text-xs text-slate-600"><strong>名稱：</strong>東京淺草橫綱Hotel (Yokokuna Hotel Asakusa)</p>
                 <p class="text-xs text-slate-600"><strong>地址：</strong>東京都台東区浅草3丁目30-5</p>
                 <button @click="triggerGoogleMap('Asakusa Yokozuna Hotel')" class="w-full mt-2 py-2 bg-sky-900 text-amber-100 font-bold text-xs rounded-lg shadow-sm">開啟 Google Maps</button>
+            </div>
+
+            <div class="bg-red-50 p-4 rounded-2xl border border-red-200">
+                <h3 class="text-sm font-bold text-red-900 mb-2">🚨 緊急求助</h3>
+                <div class="grid grid-cols-2 gap-2 text-xs font-bold">
+                    <div class="bg-white p-2 rounded-xl text-center shadow-sm"><span class="text-red-600 text-lg">110</span><br>警察局</div>
+                    <div class="bg-white p-2 rounded-xl text-center shadow-sm"><span class="text-red-600 text-lg">119</span><br>救護車</div>
+                </div>
             </div>
         </div>
 
         <div v-if="currentTab === 'shopping'" class="space-y-3 animate-fade-in">
-            <div v-if="shoppingList.length === 0" class="text-center text-xs text-slate-400 py-12">🧺 購物清單空空如也！</div>
+            <div v-if="shoppingList.length === 0" class="text-center text-xs text-slate-400 py-12">
+                🧺 購物清單空空如也，快點右下角「＋」加入戰利品目標！
+            </div>
             <div v-for="shop in shoppingList" :key="shop.id" class="bg-white/90 p-4 rounded-2xl border border-rose-50 shadow-sm flex justify-between items-center">
                 <div class="flex items-center gap-3">
-                    <button @click="shop.checked = !shop.checked; updateCloud();" class="text-xl focus:outline-none">{{ shop.checked ? '⭐' : '☆' }}</button>
+                    <button @click="shop.checked = !shop.checked; updateCloud();" class="text-xl focus:outline-none">
+                        {{ shop.checked ? '⭐' : '☆' }}
+                    </button>
                     <div v-if="shop.image" class="w-12 h-12 rounded-lg overflow-hidden border border-slate-100 bg-slate-50 flex-shrink-0">
                         <img :src="shop.image" class="w-full h-full object-cover">
                     </div>
@@ -169,16 +197,28 @@
             <div class="bg-slate-900 text-white p-5 rounded-2xl text-center shadow-lg">
                 <span class="text-[10px] text-sky-300 tracking-widest font-bold">TOTAL EXPENSES</span>
                 <div class="flex justify-around mt-2">
-                    <div><p class="text-[10px] text-slate-400">日幣總計</p><h2 class="text-xl font-black text-amber-300">¥ {{ totalJPY.toLocaleString() }}</h2></div>
-                    <div class="border-l border-white/20 pl-4"><p class="text-[10px] text-slate-400">折合港幣</p><h2 class="text-xl font-black text-rose-400">HK$ {{ totalHKD.toFixed(2) }}</h2></div>
+                    <div>
+                        <p class="text-[10px] text-slate-400">日幣總計</p>
+                        <h2 class="text-xl font-black text-amber-300">¥ {{ totalJPY.toLocaleString() }}</h2>
+                    </div>
+                    <div class="border-l border-white/20 pl-4">
+                        <p class="text-[10px] text-slate-400">折合港幣</p>
+                        <h2 class="text-xl font-black text-rose-400">HK$ {{ totalHKD.toFixed(2) }}</h2>
+                    </div>
                 </div>
             </div>
 
-            <div v-if="expenses.length === 0" class="text-center text-xs text-slate-400 py-8">💰 目前還沒有記帳紀錄喔！</div>
+            <div v-if="expenses.length === 0" class="text-center text-xs text-slate-400 py-8">
+                💰 目前還沒有記帳紀錄喔！
+            </div>
+            
             <div v-for="exp in expenses" :key="exp.id" class="bg-white/90 p-3.5 rounded-2xl border border-slate-100 shadow-sm flex justify-between items-center">
                 <div class="flex items-center gap-3">
                     <span class="text-[10px] px-2 py-1 rounded bg-slate-100 font-bold text-slate-600">{{ exp.category }}</span>
-                    <div><h4 class="text-sm font-bold text-slate-800">{{ exp.name }}</h4><p class="text-[9px] text-slate-400">{{ exp.date }}</p></div>
+                    <div>
+                        <h4 class="text-sm font-bold text-slate-800">{{ exp.name }}</h4>
+                        <p class="text-[9px] text-slate-400">{{ exp.date }}</p>
+                    </div>
                 </div>
                 <div class="text-right flex items-center gap-3">
                     <span class="text-sm font-bold text-slate-700">¥ {{ exp.amount.toLocaleString() }}</span>
@@ -189,7 +229,7 @@
 
     </main>
 
-    <button v-if="currentTab !== 'info' && !(currentTab === 'itinerary' && days.length === 0)" @click="triggerFAB" class="fixed bottom-24 right-6 w-14 h-14 bg-sky-900 text-amber-100 rounded-full text-3xl shadow-2xl flex items-center justify-center z-50">＋</button>
+    <button v-if="currentTab !== 'info'" @click="triggerFAB" class="fixed bottom-24 right-6 w-14 h-14 bg-sky-900 text-amber-100 rounded-full text-3xl shadow-2xl flex items-center justify-center z-50 focus:outline-none hover:scale-105 transition-all">＋</button>
 
     <div v-if="showModal" class="fixed inset-0 bg-black/60 z-[60] flex items-end justify-center p-4 backdrop-blur-sm animate-fade-in" @click.self="closeModal">
         <div class="bg-white w-full max-w-md rounded-t-3xl p-5 space-y-4 max-h-[85vh] overflow-y-auto shadow-2xl">
@@ -206,10 +246,19 @@
                     </select>
                 </div>
                 <div class="grid grid-cols-2 gap-3">
-                    <div><label class="block text-xs font-bold text-slate-500 mb-1">時間 (如 09:30)</label><input type="text" v-model="modalData.time" class="w-full p-2.5 bg-slate-50 border rounded-xl font-mono"></div>
-                    <div><label class="block text-xs font-bold text-slate-500 mb-1">交通時間 (分鐘)</label><input type="text" v-model="modalData.transTime" class="w-full p-2.5 bg-slate-50 border rounded-xl"></div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 mb-1">時間 (如 09:30)</label>
+                        <input type="text" v-model="modalData.time" class="w-full p-2.5 bg-slate-50 border rounded-xl font-mono">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 mb-1">交通時間 (分鐘)</label>
+                        <input type="text" v-model="modalData.transTime" class="w-full p-2.5 bg-slate-50 border rounded-xl">
+                    </div>
                 </div>
-                <div><label class="block text-xs font-bold text-slate-500 mb-1">地點 / 項目名稱</label><input type="text" v-model="modalData.location" class="w-full p-2.5 bg-slate-50 border rounded-xl font-bold"></div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 mb-1">地點 / 項目名稱</label>
+                    <input type="text" v-model="modalData.location" class="w-full p-2.5 bg-slate-50 border rounded-xl font-bold">
+                </div>
 
                 <div v-if="modalData.category === '航班'" class="p-3 bg-sky-50 rounded-xl space-y-2 border border-sky-100">
                     <div class="grid grid-cols-3 gap-2">
@@ -227,7 +276,10 @@
                     <div><label class="block text-xs font-bold text-slate-500 mb-1">營業時間</label><input type="text" v-model="modalData.openTime" class="w-full p-2.5 bg-slate-50 border rounded-xl"></div>
                     <div><label class="block text-xs font-bold text-slate-500 mb-1">門票費用</label><input type="text" v-model="modalData.ticketPrice" class="w-full p-2.5 bg-slate-50 border rounded-xl"></div>
                 </div>
-                <div><label class="block text-xs font-bold text-slate-500 mb-1">備註 / 隨手記</label><textarea rows="3" v-model="modalData.note" class="w-full p-2.5 bg-slate-50 border rounded-xl text-xs"></textarea></div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 mb-1">備註 / 隨手記</label>
+                    <textarea rows="3" v-model="modalData.note" class="w-full p-2.5 bg-slate-50 border rounded-xl text-xs"></textarea>
+                </div>
                 <div class="flex gap-2 pt-2">
                     <button v-if="isEditMode" @click="deleteEvent" class="flex-1 bg-rose-50 text-rose-600 border border-rose-200 py-3 rounded-xl font-bold">🗑️ 刪除</button>
                     <button @click="saveEvent" class="flex-[2] bg-sky-950 text-amber-100 py-3 rounded-xl font-bold shadow-md">💾 儲存確認</button>
@@ -235,42 +287,43 @@
             </div>
 
             <div v-if="modalType === 'shopping'" class="space-y-3 text-sm">
-                <div><label class="block text-xs font-bold text-slate-500 mb-1">商品名稱</label><input type="text" v-model="modalData.name" placeholder="例如：Chiikawa 吊飾" class="w-full p-2.5 bg-slate-50 border rounded-xl font-bold"></div>
-                <div><label class="block text-xs font-bold text-slate-500 mb-1">上傳商品相片 (可選)</label><input type="file" accept="image/*" @change="handleImageUpload" class="w-full text-xs text-slate-500 file:mr-3"></div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 mb-1">商品名稱</label>
+                    <input type="text" v-model="modalData.name" placeholder="例如：Chiikawa 吊飾" class="w-full p-2.5 bg-slate-50 border rounded-xl font-bold">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 mb-1">上傳商品相片 (可選)</label>
+                    <input type="file" accept="image/*" @change="handleImageUpload" class="w-full text-xs text-slate-500 file:mr-3 file:py-2 file:px-3 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-sky-50 file:text-sky-700 hover:file:bg-sky-100">
+                </div>
                 <button @click="saveShoppingItem" class="w-full bg-sky-950 text-amber-100 py-3 rounded-xl font-bold mt-2 shadow-md">🧺 加入購物清單</button>
             </div>
 
             <div v-if="modalType === 'wallet'" class="space-y-3 text-sm">
                 <div>
                     <label class="block text-xs font-bold text-slate-500 mb-1">花費類別</label>
-                    <select v-model="modalData.category" class="w-full p-2.5 bg-slate-50 border rounded-xl"><option>飲食</option><option>購物</option><option>交通</option><option>門票</option><option>其他</option></select>
+                    <select v-model="modalData.category" class="w-full p-2.5 bg-slate-50 border rounded-xl">
+                        <option>飲食</option><option>購物</option><option>交通</option><option>門票</option><option>其他</option>
+                    </select>
                 </div>
-                <div><label class="block text-xs font-bold text-slate-500 mb-1">項目名稱</label><input type="text" v-model="modalData.name" placeholder="一蘭拉麵" class="w-full p-2.5 bg-slate-50 border rounded-xl font-bold"></div>
-                <div><label class="block text-xs font-bold text-slate-500 mb-1">金額 (日幣 JPY)</label><input type="number" v-model.number="modalData.amount" class="w-full p-2.5 bg-slate-50 border rounded-xl font-mono font-bold"></div>
-                <div><label class="block text-xs font-bold text-slate-500 mb-1">消費日期</label><input type="date" v-model="modalData.date" class="w-full p-2.5 bg-slate-50 border rounded-xl"></div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 mb-1">項目名稱</label>
+                    <input type="text" v-model="modalData.name" placeholder="例如：一蘭拉麵晚餐" class="w-full p-2.5 bg-slate-50 border rounded-xl font-bold">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 mb-1">金額 (日幣 JPY)</label>
+                    <input type="number" v-model.number="modalData.amount" placeholder="¥ 數字金額" class="w-full p-2.5 bg-slate-50 border rounded-xl font-mono font-bold">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 mb-1">消費日期</label>
+                    <input type="date" v-model="modalData.date" class="w-full p-2.5 bg-slate-50 border rounded-xl">
+                </div>
                 <button @click="saveExpenseItem" class="w-full bg-sky-950 text-amber-100 py-3 rounded-xl font-bold mt-2 shadow-md">💰 儲存此筆消費</button>
-            </div>
-
-            <div v-if="modalType === 'dayManager'" class="space-y-4 text-sm">
-                <div class="max-h-[50vh] overflow-y-auto pr-1 space-y-3">
-                    <div v-for="(day, index) in modalData.days" :key="index" class="p-3 bg-slate-50 rounded-2xl border border-slate-200 relative space-y-2">
-                        <div class="flex justify-between items-center"><span class="text-xs font-bold text-sky-950 bg-amber-200 px-2 py-0.5 rounded">第 {{ index + 1 }} 天</span><button @click="removeDayFromModal(index)" class="text-xs text-rose-500 font-bold px-2 py-1">🗑️ 刪除</button></div>
-                        <div class="grid grid-cols-3 gap-2">
-                            <div><label class="text-[10px] text-slate-400 font-bold block">星期</label><input type="text" v-model="day.weekShort" class="w-full p-2 bg-white border rounded-lg text-xs font-bold"></div>
-                            <div><label class="text-[10px] text-slate-400 font-bold block">日期號</label><input type="text" v-model="day.dateNum" class="w-full p-2 bg-white border rounded-lg text-xs font-mono font-bold"></div>
-                            <div><label class="text-[10px] text-slate-400 font-bold block">日期值</label><input type="number" v-model.number="day.dayValue" class="w-full p-2 bg-white border rounded-lg text-xs font-mono font-bold"></div>
-                        </div>
-                        <div><label class="text-[10px] text-slate-400 font-bold block">今日行程主題</label><input type="text" v-model="day.title" class="w-full p-2 bg-white border rounded-lg text-xs font-bold"></div>
-                    </div>
-                </div>
-                <button @click="addNewDayToModal" class="w-full py-2 border-2 border-dashed border-sky-800 text-sky-900 font-bold rounded-xl text-xs">➕ 新增一天旅遊日子</button>
-                <button @click="saveDaysConfig" class="w-full bg-sky-950 text-amber-100 py-3 rounded-xl font-bold shadow-md">💾 儲存天數配置修改</button>
             </div>
         </div>
     </div>
 
     <nav class="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white/95 backdrop-blur-md border-t border-slate-200 z-40 flex justify-around py-3 px-2">
-        <button v-for="tab in tabs" :key="tab.id" @click="currentTab = tab.id" :class="currentTab === tab.id ? 'text-sky-900 font-bold' : 'text-slate-400'" class="flex flex-col items-center flex-1">
+        <button v-for="tab in tabs" :key="tab.id" @click="currentTab = tab.id" :class="currentTab === tab.id ? 'text-sky-900 font-bold' : 'text-slate-400'" class="flex flex-col items-center flex-1 focus:outline-none">
             <span class="text-xl">{{ tab.icon }}</span><span class="text-[10px] mt-1">{{ tab.name }}</span>
         </button>
     </nav>
@@ -280,12 +333,11 @@
 <script>
 const { createApp, ref, computed, onMounted, nextTick } = Vue;
 
-// 後端資料庫連線參數
+// 🌟 專屬的 Supabase 連線參數
 const SUPABASE_URL = "https://vumrenvgdbjeaiuvnuzx.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ1bXJlbnZnZGJqZWFpdXZudXp4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEwNTI4NDcsImV4cCI6MjA5NjYyODg0N30.Rn_WmoNaz1-PfHDznfJY0g_UU-kWs3UR4Wd5e2SchEo";
-
-// 固定同一個雲端同步房間識別碼，避免全家人需要重複輸入密碼
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ1bXJlbnZnZGJqZWFpdXZudXp4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTt4MTA1Mjg0NywiZXhwIjoyMDk2NjI4ODQ3fQ.K7kgUEGauqC0bMe7KDMYttWqhQnlBbxLEgquWOhde4s";
 const FIXED_ROOM_ID = "tokyo2026_family";
+const TABLE_NAME = "tokyo-travel-app"; // 資料表名稱
 
 createApp({
     setup() {
@@ -293,157 +345,221 @@ createApp({
         const selectedDay = ref(0);
         const exchangeRate = ref(0.051); 
         const calcInputJPY = ref(null);
-        const scrollContainer = ref(null);
         
+        // 🌟 雲端連線狀態操控
         const isSynced = ref(false);
-        let supabaseClient, cloudChannel = null;
+        let supabaseClient = null;
+        let cloudChannel = null;
 
-        const weatherDataStore = ref({ live: { temp: '--', desc: '讀取中...', icon: '⏳', pop: 0 }, forecasts: [] });
+        const weatherDataStore = ref({
+            live: { temp: '--', desc: '讀取中...', icon: '⏳', pop: 0 },
+            forecasts: [] 
+        });
 
-        const defaultDays = [
+        const days = [
             { weekShort:'Mon', dateNum:'15', title:'抵達與淺草寺散步', dayValue: 15 },
             { weekShort:'Tue', dateNum:'16', title:'御殿場 Outlet', dayValue: 16 },
             { weekShort:'Wed', dateNum:'17', title:'築地與分頭活動', dayValue: 17 },
             { weekShort:'Thu', dateNum:'18', title:'晴空塔與銀座', dayValue: 18 },
             { weekShort:'Fri', dateNum:'19', title:'成田機場回港', dayValue: 19 }
         ];
+
+        const tabs = [
+            {id:'itinerary', name:'每日行程', icon:'📍'}, {id:'info', name:'旅遊資訊', icon:'ℹ️'},
+            {id:'shopping', name:'購物清單', icon:'🧺'}, {id:'wallet', name:'花費紀錄', icon:'💰'}
+        ];
+        
+        // 預設行程（當雲端完全沒資料時的初始範本）
         const defaultEvents = [
-            { id: 1, dayIdx: 0, category: '航班', location: '成田空港', time: '14:55', flightNum: 'HX608', flightDep: 'HKG', flightArr: 'NRT', flightArrTime: '20:10', flightDuration: '4h 15m', note: '抵達成田空港', transTime: '50', transMode: 'transit' }
+            { id: 1, dayIdx: 0, category: '航班', location: '成田空港', time: '14:55', flightNum: 'HX608', flightDep: 'HKG', flightArr: 'NRT', flightArrTime: '20:10', flightDuration: '4h 15m', note: '抵達成田空港\n辦理入境提取行李。', transTime: '50', transMode: 'transit' },
+            { id: 2, dayIdx: 0, category: '住宿', location: '東京淺草橫綱Hotel', time: '21:30', note: '辦理入住手續', transTime: '15', transMode: 'walk' },
+            { id: 3, dayIdx: 0, category: '美食', location: '淺草附近拉麵/居酒屋', time: '22:00', note: '宵夜與放鬆', transTime: '0', transMode: 'walk' },
+            { id: 4, dayIdx: 1, category: '景點', location: '御殿場 Premium Outlets', time: '10:00', openTime: '10:00-20:00', note: '瘋狂購物行程！', transTime: '120', transMode: 'drive' },
+            { id: 5, dayIdx: 2, category: '美食', location: '築地場外市場', time: '08:30', note: '早餐享用海鮮丼與玉子燒', transTime: '30', transMode: 'transit' },
+            { id: 6, dayIdx: 2, category: '景點', location: '分頭活動 / 自由逛街', time: '13:00', note: '各自安排想去的景點', transTime: '40', transMode: 'transit' },
+            { id: 7, dayIdx: 3, category: '景點', location: '東京晴空塔 (SKYTREE)', time: '09:35', ticketPrice: '已預約 09:30 門票', note: '登高看東京全景', transTime: '30', transMode: 'transit' },
+            { id: 8, dayIdx: 3, category: '景點', location: '銀座 / 有樂町散策', time: '14:00', note: '逛街精品、無印良品旗艦店', transTime: '25', transMode: 'transit' },
+            { id: 9, dayIdx: 4, category: '景點', location: '淺草寺周邊最後巡禮', time: '09:00', note: '買手信、補貨', transTime: '60', transMode: 'transit' },
+            { id: 10, dayIdx: 4, category: '航班', location: '成田空港', time: '15:30', flightNum: 'HX609', flightDep: 'NRT', flightArr: 'HKG', flightArrTime: '21:00', flightDuration: '4h 30m', note: '起飛回港，結束美好旅程', transTime: '0', transMode: 'transit' }
         ];
 
-        const days = ref(JSON.parse(localStorage.getItem('trip_days')) || defaultDays);
-        const events = ref(JSON.parse(localStorage.getItem('trip_events')) || defaultEvents);
-        const shoppingList = ref(JSON.parse(localStorage.getItem('sh_list')) || []);
-        const expenses = ref(JSON.parse(localStorage.getItem('ex_list')) || []);
+        const events = ref([...defaultEvents]);
+        const shoppingList = ref([]);
+        const expenses = ref([]);
 
-        const tabs = [{id:'itinerary',name:'每日行程',icon:'📍'},{id:'info',name:'旅遊資訊',icon:'ℹ️'},{id:'shopping',name:'購物清單',icon:'🧺'},{id:'wallet',name:'花費紀錄',icon:'💰'}];
         const showModal = ref(false); const isEditMode = ref(false); const modalType = ref(''); const modalData = ref({}); let currentTargetEventId = null;
 
-        // 核心免密碼自動同步機制
+        const modalTitle = computed(() => {
+            if (modalType.value === 'shopping') return '🧺 新增採購目標商品';
+            if (modalType.value === 'wallet') return '💰 新增消費記帳';
+            return isEditMode.value ? '📝 編輯行程項目' : '✨ 新增行程項目';
+        });
+
+        // 🌟 自動免密碼同步連線與即時監聽機制（已全面修正為新版 v2 語法）
         const connectToSupabase = async () => {
-            if (!supabaseClient) {
+            try {
                 supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+                // 1. 率先去雲端撈取最新資料
+                const { data, error } = await supabaseClient
+                    .from(TABLE_NAME)
+                    .select('*')
+                    .eq('room_id', FIXED_ROOM_ID)
+                    .maybeSingle();
+
+                if (data) {
+                    if (data.events) events.value = data.events;
+                    if (data.shopping_list) shoppingList.value = data.shopping_list;
+                    if (data.expenses) expenses.value = data.expenses;
+                    saveLocalBackup();
+                } else {
+                    // 如果資料庫全空，自動初始化建立一筆
+                    await supabaseClient.from(TABLE_NAME).insert([{
+                        room_id: FIXED_ROOM_ID, events: events.value, shopping_list: shoppingList.value, expenses: expenses.value
+                    }]);
+                }
+                isSynced.value = true;
+
+                // 2. 修正：建立符合 Supabase v2 SDK 規範的即時雙向廣播通道
+                if (cloudChannel) supabaseClient.removeChannel(cloudChannel);
+                
+                cloudChannel = supabaseClient
+                    .channel('schema-db-changes')
+                    .on(
+                        'postgres_changes', 
+                        { 
+                            event: '*', 
+                            schema: 'public', 
+                            table: TABLE_NAME, 
+                            filter: `room_id=eq.${FIXED_ROOM_ID}` 
+                        }, 
+                        (payload) => {
+                            const next = payload.new;
+                            if (next) {
+                                if (next.events) events.value = next.events;
+                                if (next.shopping_list) shoppingList.value = next.shopping_list;
+                                if (next.expenses) expenses.value = next.expenses;
+                                saveLocalBackup();
+                            }
+                        }
+                    )
+                    .subscribe((status) => {
+                        console.log("Supabase Realtime 訂閱狀態:", status);
+                    });
+
+            } catch (err) {
+                console.error("雲端連線失敗，自動啟用本地備份機制", err);
+                loadLocalBackup();
+                isSynced.value = false;
             }
-
-            // 1. 從資料庫讀取先前儲存的最新旅程數據
-            const { data, error } = await supabaseClient
-                .from('trips')
-                .select('*')
-                .eq('room_id', FIXED_ROOM_ID)
-                .maybeSingle();
-
-            if (data) {
-                if (data.days) days.value = data.days;
-                if (data.events) events.value = data.events;
-                if (data.shopping_list) shoppingList.value = data.shopping_list;
-                if (data.expenses) expenses.value = data.expenses;
-                saveLocalBackup();
-            } else {
-                // 如果是第一次初始化，在資料庫內建立新紀錄
-                await supabaseClient.from('trips').insert([{
-                    room_id: FIXED_ROOM_ID, days: days.value, events: events.value, shopping_list: shoppingList.value, expenses: expenses.value
-                }]);
-            }
-            isSynced.value = true;
-
-            // 2. 建立廣播管道，當別人修改時網頁會自動更新
-            cloudChannel = supabaseClient
-                .channel(`public:trips:room_${FIXED_ROOM_ID}`)
-                .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'trips', filter: `room_id=eq.${FIXED_ROOM_ID}` }, (payload) => {
-                    const next = payload.new;
-                    if (next) {
-                        if (next.days) days.value = next.days;
-                        if (next.events) events.value = next.events;
-                        if (next.shopping_list) shoppingList.value = next.shopping_list;
-                        if (next.expenses) expenses.value = next.expenses;
-                        saveLocalBackup();
-                    }
-                })
-                .subscribe();
         };
 
-        // 修改內容時自動背後推送到 Supabase 雲端
+        // 🌟 當資料有任何異動時，自動推送更新至 Supabase 雲端
         const updateCloud = async () => {
             saveLocalBackup();
             if (!isSynced.value || !supabaseClient) return;
             try {
                 await supabaseClient
-                    .from('trips')
+                    .from(TABLE_NAME)
                     .update({
-                        days: days.value,
                         events: events.value,
                         shopping_list: shoppingList.value,
                         expenses: expenses.value
                     })
                     .eq('room_id', FIXED_ROOM_ID);
             } catch (e) {
-                console.error("Supabase同步失敗:", e);
+                console.error("推送至雲端發生錯誤:", e);
             }
         };
 
         const saveLocalBackup = () => {
-            localStorage.setItem('trip_days', JSON.stringify(days.value));
             localStorage.setItem('trip_events', JSON.stringify(events.value));
             localStorage.setItem('sh_list', JSON.stringify(shoppingList.value));
             localStorage.setItem('ex_list', JSON.stringify(expenses.value));
         };
 
-        const scrollToDay = (index) => {
-            selectedDay.value = index;
-            nextTick(() => {
-                const btn = document.getElementById(`day-btn-${index}`);
-                const container = scrollContainer.value;
-                if (btn && container) container.scrollLeft = btn.offsetLeft - (container.offsetWidth / 2) + (btn.offsetWidth / 2);
-            });
+        const loadLocalBackup = () => {
+            const localEvt = localStorage.getItem('trip_events');
+            const localShop = localStorage.getItem('sh_list');
+            const localExp = localStorage.getItem('ex_list');
+            if (localEvt) events.value = JSON.parse(localEvt);
+            if (localShop) shoppingList.value = JSON.parse(localShop);
+            if (localExp) expenses.value = JSON.parse(localExp);
         };
-
-        const openDayManager = () => { modalType.value = 'dayManager'; modalData.value = { days: JSON.parse(JSON.stringify(days.value)) }; showModal.value = true; };
-        const addNewDayToModal = () => {
-            let nextNum = 15; let nextWeek = 'Mon';
-            if (modalData.value.days.length > 0) {
-                const lastDay = modalData.value.days[modalData.value.days.length - 1];
-                nextNum = parseInt(lastDay.dateNum) + 1 || 1;
-                const weeks = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-                nextWeek = weeks[(weeks.indexOf(lastDay.weekShort) + 1) % 7] || 'Mon';
-            }
-            modalData.value.days.push({ weekShort: nextWeek, dateNum: String(nextNum), title: '自訂行程主題', dayValue: nextNum });
-        };
-        const removeDayFromModal = (index) => { if(confirm(`確定刪除第 ${index + 1} 天嗎？`)) modalData.value.days.splice(index, 1); };
-        const saveDaysConfig = () => { days.value = JSON.parse(JSON.stringify(modalData.value.days)); if (selectedDay.value >= days.value.length) selectedDay.value = Math.max(0, days.value.length - 1); updateCloud(); closeModal(); };
-
-        const modalTitle = computed(() => {
-            if (modalType.value === 'shopping') return '🧺 新增採購目標商品';
-            if (modalType.value === 'wallet') return '💰 新增消費記帳';
-            if (modalType.value === 'dayManager') return '🗓️ 管理與編輯旅遊天數';
-            return isEditMode.value ? '📝 編輯行程項目' : '✨ 新增行程項目';
-        });
 
         const activeWeather = computed(() => {
-            if (days.value.length === 0 || !days.value[selectedDay.value]) return { typeTitle: '提示', badgeClass: 'bg-slate-500', icon: '☁️', desc: '無日期數據', tempInfo: '--°C', pop: null };
-            const dayDiff = days.value[selectedDay.value].dayValue - new Date().getDate();
-            if (dayDiff === 0) return { typeTitle: '🔴 東京。現時天氣', badgeClass: 'bg-rose-500', icon: weatherDataStore.value.live.icon, desc: weatherDataStore.value.live.desc, tempInfo: `${weatherDataStore.value.live.temp}°C`, pop: weatherDataStore.value.live.pop };
-            return { typeTitle: '💡 東京氣候提示', badgeClass: 'bg-amber-500', icon: '🌤️', desc: '初夏梅雨季，建議攜帶雨傘備用。', tempInfo: '20°C ~ 27°C', pop: null };
+            const todayObj = new Date();
+            const currentRealDay = todayObj.getDate(); 
+            const clickedDayValue = days[selectedDay.value].dayValue; 
+            const dayDiff = clickedDayValue - currentRealDay;
+
+            if (dayDiff === 0) {
+                return {
+                    typeTitle: '🔴 東京。現時天氣',
+                    badgeClass: 'bg-rose-500',
+                    icon: weatherDataStore.value.live.icon,
+                    desc: weatherDataStore.value.live.desc,
+                    tempInfo: `${weatherDataStore.value.live.temp}°C`,
+                    pop: weatherDataStore.value.live.pop
+                };
+            }
+            if (dayDiff > 0 && dayDiff <= 2) {
+                const savedForecast = weatherDataStore.value.forecasts[dayDiff];
+                if (savedForecast) {
+                    return {
+                        typeTitle: `📅 ${clickedDayValue}日。精準預報`,
+                        badgeClass: 'bg-sky-600',
+                        icon: savedForecast.icon,
+                        desc: savedForecast.desc,
+                        tempInfo: `${savedForecast.minTemp}° ~ ${savedForecast.maxTemp}°`,
+                        pop: savedForecast.pop
+                    };
+                }
+            }
+            return {
+                typeTitle: '💡 6月東京氣候提示',
+                badgeClass: 'bg-amber-500',
+                icon: '🌤️',
+                desc: '東京初夏梅雨季，出門建議攜帶晴雨傘，早晚溫差大可備薄外套。',
+                tempInfo: '20°C ~ 27°C',
+                pop: null
+            };
         });
 
         const fetchAllWeather = async () => {
             try {
-                const res = await fetch('https://wttr.in/Tokyo?format=j1'); const data = await res.json();
+                const res = await fetch('https://wttr.in/Tokyo?format=j1');
+                const data = await res.json();
                 const current = data.current_condition[0];
-                weatherDataStore.value.live = { temp: current.temp_C, desc: current.lang_zh ? current.lang_zh[0].value : current.weatherDesc[0].value, icon: '🌤️', pop: 20 };
-            } catch (e) { weatherDataStore.value.live = { temp: '24', desc: '多雲時晴', icon: '🌤️', pop: 20 }; }
+                const liveDesc = current.lang_zh ? current.lang_zh[0].value : current.weatherDesc[0].value;
+                const livePop = current.precipMM > 0 ? 75 : 15;
+                
+                weatherDataStore.value.live = { temp: current.temp_C, desc: liveDesc, icon: getWeatherIcon(livePop), pop: livePop };
+                weatherDataStore.value.forecasts = data.weather.map((wDay) => {
+                    let maxPop = 0;
+                    wDay.hourly.forEach(h => { if (parseInt(h.chanceofrain) > maxPop) maxPop = parseInt(h.chanceofrain); });
+                    const dayDesc = wDay.hourly[4].lang_zh ? wDay.hourly[4].lang_zh[0].value : wDay.hourly[4].weatherDesc[0].value;
+                    return { minTemp: wDay.mintempC, maxTemp: wDay.maxtempC, desc: dayDesc, icon: getWeatherIcon(maxPop), pop: maxPop };
+                });
+            } catch (e) {
+                weatherDataStore.value.live = { temp: '24', desc: '多雲時晴', icon: '🌤️', pop: 20 };
+            }
         };
+
+        const getWeatherIcon = (pop) => { if (pop >= 70) return '🌧️'; if (pop >= 40) return '🌦️'; if (pop >= 20) return '☁️'; return '☀️'; };
 
         const currentDayEvents = computed(() => events.value.filter(e => e.dayIdx === selectedDay.value));
         const totalJPY = computed(() => expenses.value.reduce((sum, item) => sum + (item.amount || 0), 0));
         const totalHKD = computed(() => totalJPY.value * exchangeRate.value);
         const getPrevDayHotel = (day) => day === 0 ? null : "東京淺草橫綱Hotel";
-        const triggerGoogleMap = (loc) => window.open(`https://maps.google.com/?q=${encodeURIComponent(loc)}`, '_blank');
+        
+        const triggerGoogleMap = (loc) => window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(loc)}`, '_blank');
         const getCategoryClass = (cat) => ({ '景點':'bg-rose-100 text-rose-700','住宿':'bg-emerald-100 text-emerald-700','美食':'bg-amber-100 text-amber-700' }[cat] || 'bg-slate-100');
 
         const triggerFAB = () => {
             if (currentTab.value === 'itinerary') {
-                if (days.value.length === 0) return;
-                modalType.value = 'event'; isEditMode.value = false; modalData.value = { category: '景點', time: '', location: '', note: '', transTime: '20', transMode: 'transit' };
+                modalType.value = 'event'; isEditMode.value = false;
+                modalData.value = { category: '景點', time: '', location: '', note: '', transTime: '20', transMode: 'transit' };
             } else if (currentTab.value === 'shopping') {
                 modalType.value = 'shopping'; modalData.value = { name: '', image: null };
             } else if (currentTab.value === 'wallet') {
@@ -452,11 +568,15 @@ createApp({
             showModal.value = true;
         };
 
-        const openModal = (type, dataObj) => { modalType.value = type; isEditMode.value = true; currentTargetEventId = dataObj.id; modalData.value = { ...dataObj }; showModal.value = true; };
+        const openModal = (type, dataObj) => {
+            modalType.value = type; isEditMode.value = true; currentTargetEventId = dataObj.id;
+            modalData.value = { ...dataObj }; showModal.value = true;
+        };
+
         const closeModal = () => { showModal.value = false; };
 
         const saveEvent = () => {
-            if (!modalData.value.location || !modalData.value.time) return;
+            if (!modalData.value.location || !modalData.value.time) { alert('請填寫地點與時間！'); return; }
             if (isEditMode.value) {
                 const idx = events.value.findIndex(e => e.id === currentTargetEventId);
                 if (idx !== -1) events.value[idx] = { ...modalData.value };
@@ -468,27 +588,56 @@ createApp({
             updateCloud(); closeModal();
         };
 
-        const deleteEvent = () => { events.value = events.value.filter(e => e.id !== currentTargetEventId); updateCloud(); closeModal(); };
-        const saveShoppingItem = () => { if (!modalData.value.name) return; shoppingList.value.push({ id: Date.now(), name: modalData.value.name, image: modalData.value.image, checked: false }); updateCloud(); closeModal(); };
-        const deleteShoppingItem = (id) => { shoppingList.value = shoppingList.value.filter(s => s.id !== id); updateCloud(); };
+        const deleteEvent = () => {
+            events.value = events.value.filter(e => e.id !== currentTargetEventId);
+            updateCloud(); closeModal();
+        };
+
+        const saveShoppingItem = () => {
+            if (!modalData.value.name) return;
+            shoppingList.value.push({ id: Date.now(), name: modalData.value.name, image: modalData.value.image, checked: false });
+            updateCloud(); closeModal();
+        };
+
+        const deleteShoppingItem = (id) => {
+            shoppingList.value = shoppingList.value.filter(s => s.id !== id);
+            updateCloud();
+        };
+
         const handleImageUpload = (e) => {
             const file = e.target.files[0]; if (!file) return;
-            const reader = new FileReader(); reader.onload = (event) => { modalData.value.image = event.target.result; }; reader.readAsDataURL(file);
+            const reader = new FileReader();
+            reader.onload = (event) => { modalData.value.image = event.target.result; };
+            reader.readAsDataURL(file);
         };
-        const saveExpenseItem = () => { if (!modalData.value.name || !modalData.value.amount) return; expenses.value.push({ id: Date.now(), category: modalData.value.category, name: modalData.value.name, amount: modalData.value.amount, date: modalData.value.date }); updateCloud(); closeModal(); };
-        const deleteExpenseItem = (id) => { expenses.value = expenses.value.filter(e => e.id !== id); updateCloud(); };
+
+        const saveExpenseItem = () => {
+            if (!modalData.value.name || !modalData.value.amount) return;
+            expenses.value.push({ id: Date.now(), category: modalData.value.category, name: modalData.value.name, amount: modalData.value.amount, date: modalData.value.date });
+            updateCloud(); closeModal();
+        };
+
+        const deleteExpenseItem = (id) => {
+            expenses.value = expenses.value.filter(e => e.id !== id);
+            updateCloud();
+        };
+
+        const initDragDrop = () => {
+            const el = document.getElementById('drag-container');
+            if (el) { Sortable.create(el, { animation: 200, disabled: true }); }
+        };
 
         onMounted(() => {
             fetchAllWeather();
-            connectToSupabase(); // 網頁開啟時就立刻自動連線
+            connectToSupabase();
+            nextTick(() => { initDragDrop(); });
         });
 
         return { 
-            currentTab, selectedDay, exchangeRate, calcInputJPY, tabs, days, activeWeather, scrollContainer, isSynced,
+            currentTab, selectedDay, exchangeRate, calcInputJPY, tabs, days, activeWeather, 
             currentDayEvents, shoppingList, expenses, totalJPY, totalHKD, triggerGoogleMap, getCategoryClass, getPrevDayHotel,
-            showModal, isEditMode, modalType, modalData, modalTitle, triggerFAB, openModal, closeModal, updateCloud,
-            saveEvent, deleteEvent, saveShoppingItem, deleteShoppingItem, handleImageUpload, saveExpenseItem, deleteExpenseItem, scrollToDay,
-            openDayManager, addNewDayToModal, removeDayFromModal, saveDaysConfig
+            showModal, isEditMode, modalType, modalData, modalTitle, triggerFAB, openModal, closeModal, isSynced, updateCloud,
+            saveEvent, deleteEvent, saveShoppingItem, deleteShoppingItem, handleImageUpload, saveExpenseItem, deleteExpenseItem
         };
     }
 }).mount('#app');
