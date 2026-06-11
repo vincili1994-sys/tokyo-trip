@@ -3,26 +3,33 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>東京私旅 - 雲端多機同步版</title>
+    <title>澳洲多城私旅 - 15天自由主題版</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
     
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-    <style>
+	<style>
         body {
-            font-family: 'Noto Sans JP', sans-serif;
-            background-color: #fee2e2;
-            -webkit-tap-highlight-color: transparent;
-        }
-        .bg-chiikawa {
-            background-image: linear-gradient(to bottom, rgba(255, 254, 250, 0.88), rgba(254, 249, 235, 0.92)), 
-                              url('Gemini_Generated_Image_ng161ang161ang16.png');
-            background-size: cover;
+            font-family: 'Noto Sans TC', sans-serif;
+            background-image: url('background.png');
+            background-size: 100% 100%; 
             background-position: center;
             background-attachment: fixed;
+            background-repeat: no-repeat;
+            -webkit-tap-highlight-color: transparent;
+        }
+        body::-webkit-scrollbar { display: none; }
+        .bg-app-container {
+            background-color: transparent; 
+        }
+        .custom-banner {
+            background-image: url('banner.png') !important;
+            background-size: 100% 100% !important; 
+            background-position: center !important;
+            background-repeat: no-repeat !important;
         }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; overflow-x: auto; scroll-behavior: smooth; -webkit-overflow-scrolling: touch; }
@@ -32,22 +39,19 @@
 </head>
 <body class="text-slate-700 antialiased">
 
-<div id="app" class="max-w-md mx-auto min-h-screen bg-chiikawa flex flex-col shadow-2xl relative pb-24 overflow-x-hidden">
+<div id="app" class="max-w-md mx-auto min-h-screen bg-transparent flex flex-col shadow-2xl relative pb-24 overflow-x-hidden">
     
-    <header class="bg-sky-950 p-5 pt-6 pb-3 sticky top-0 z-40 border-b border-sky-900 shadow-md">
+    <header class="custom-banner p-5 pt-6 pb-3 sticky top-0 z-40 border-b border-amber-900/20 shadow-md">
         <div class="flex justify-between items-center mb-2">
             <div>
-                <span class="text-[10px] tracking-widest text-sky-300 block mb-0.5">🌟 FAMILY TOKYO 2026 🍡</span>
+                <span class="text-[10px] tracking-widest text-amber-400 block mb-0.5">🐨 EXPLORE AUSTRALIA 🦘</span>
                 <h1 class="text-lg font-bold tracking-tight text-amber-100 flex items-center gap-1.5">
-                    東京。五日慢遊購物團
+                    澳洲多城市。縱橫探索之旅
                 </h1>
-            </div>
-            <div class="w-14 h-14 rounded-full overflow-hidden border-2 border-amber-200 shadow-md flex-shrink-0 bg-white">
-                <img src="Gemini_Generated_Image_xy1nwaxy1nwaxy1n.png" alt="ICON" class="w-full h-full object-cover">
             </div>
         </div>
 
-        <div class="flex items-center justify-between bg-sky-900/40 p-2 rounded-xl border border-sky-800 text-xs my-1">
+        <div class="flex items-center justify-between bg-amber-900/40 p-2 rounded-xl border border-amber-800/40 text-xs my-1 backdrop-blur-sm">
             <span class="text-amber-200 font-bold flex-shrink-0">🌐 雲端多機同步狀態：</span>
             <div class="flex items-center gap-1.5">
                 <span v-if="isSynced" class="text-emerald-400 font-bold animate-pulse">● 已自動連線</span>
@@ -55,25 +59,32 @@
             </div>
         </div>
 
-        <div v-if="currentTab === 'itinerary'" class="flex gap-2.5 overflow-x-auto no-scrollbar mt-3 pb-1">
-            <button 
-                v-for="(day, index) in days" 
-                :key="index"
-                @click="selectedDay = index"
-                :class="selectedDay === index ? 'bg-amber-100 text-sky-950 font-bold scale-105 shadow-md border-amber-200' : 'bg-sky-900/60 text-sky-200 border-sky-800/80'"
-                class="flex-shrink-0 px-3.5 py-1.5 rounded-2xl text-center transition-all duration-300 min-w-[75px] border"
-            >
-                <span class="block text-sm font-bold tracking-wide uppercase">{{ day.weekShort }}</span>
-                <span class="text-[11px] opacity-80 block mt-0.5">{{ day.dateNum }}</span>
-            </button>
+        <div v-if="currentTab === 'itinerary'" class="mt-3">
+            <div class="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
+                <div class="flex gap-1 flex-shrink-0 bg-amber-900/60 p-1 rounded-xl border border-amber-800/60 backdrop-blur-sm">
+                    <button @click="openDateSettings" class="text-xs px-2 py-1 bg-amber-50 text-white font-bold rounded-lg shadow hover:bg-amber-600 transition">📅 設定首日</button>
+                    <button @click="addNewDay" class="text-xs px-2.5 py-1 bg-emerald-600 text-white font-bold rounded-lg shadow hover:bg-emerald-700 transition">➕ 增天</button>
+                    <button @click="removeLastDay" class="text-xs px-2.5 py-1 bg-rose-600 text-white font-bold rounded-lg shadow hover:bg-rose-700 transition">➖ 減天</button>
+                </div>
+                
+                <button 
+                    v-for="(day, index) in days" 
+                    :key="index"
+                    @click="selectedDay = index"
+                    :class="selectedDay === index ? 'bg-amber-100 text-amber-950 font-bold scale-105 shadow-md border-amber-200' : 'bg-amber-900/60 text-amber-200 border-amber-800/80 backdrop-blur-sm'"
+                    class="flex-shrink-0 px-3.5 py-1.5 rounded-2xl text-center transition-all duration-300 min-w-[75px] border"
+                >
+                    <span class="block text-sm font-bold tracking-wide uppercase">D{{ index + 1 }} ({{ day.weekShort }})</span>
+                    <span class="text-[11px] opacity-80 block mt-0.5">{{ day.dateNum }}</span>
+                </button>
+            </div>
         </div>
     </header>
 
     <main class="flex-1 p-4">
 
         <div v-if="currentTab === 'itinerary'" class="space-y-4 animate-fade-in">
-            
-            <div class="bg-white/85 backdrop-blur-md rounded-2xl p-4 border border-rose-100 shadow-sm flex justify-between items-center">
+            <div class="bg-white/85 backdrop-blur-md rounded-2xl p-4 border border-amber-100 shadow-sm flex justify-between items-center">
                 <div class="flex items-center gap-3">
                     <span class="text-3xl">{{ activeWeather.icon }}</span>
                     <div>
@@ -84,27 +95,28 @@
                     </div>
                 </div>
                 <div class="text-right">
-                    <span class="text-base font-bold text-sky-900 block whitespace-nowrap">
+                    <span class="text-base font-bold text-amber-900 block whitespace-nowrap">
                         {{ activeWeather.tempInfo }}
                     </span>
-                    <span v-if="activeWeather.pop !== null" class="text-[10px] bg-sky-100 text-sky-800 px-1.5 py-0.5 rounded-md font-bold block mt-0.5 whitespace-nowrap">
+                    <span v-if="activeWeather.pop !== null" class="text-[10px] bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded-md font-bold block mt-0.5 whitespace-nowrap">
                         💧 降雨率 {{ activeWeather.pop }}%
                     </span>
                 </div>
             </div>
 
-            <div class="bg-sky-900/90 p-3 rounded-xl border border-sky-800 text-center shadow-sm">
-                <span class="text-xs text-amber-100 font-medium">✨ 今日主題：{{ days[selectedDay]?.title }} ✨</span>
+            <div class="bg-amber-900/90 p-3 rounded-xl border border-amber-800 shadow-sm flex justify-between items-center px-4 backdrop-blur-sm">
+                <span class="text-xs text-amber-100 font-medium flex-1 text-center">✨ 今日主題：{{ days[selectedDay]?.title || '未設定主題' }} ✨</span>
+                <button @click="editDayTitle" class="text-[10px] text-amber-300 underline font-bold ml-2">編輯主題/城市</button>
             </div>
 
             <div id="drag-container" class="space-y-3 relative">
                 <div v-for="(event, idx) in currentDayEvents" :key="event.id" :data-id="event.id" class="relative">
                     
-                    <div v-if="idx > 0 || (selectedDay > 0 && getPrevDayHotel(selectedDay))" class="my-3 mx-4 flex items-center justify-between bg-white/80 backdrop-blur-sm px-4 py-2 rounded-xl border border-slate-200/60 text-xs text-slate-500">
+                    <div v-if="idx > 0" class="my-3 mx-4 flex items-center justify-between bg-white/80 backdrop-blur-sm px-4 py-2 rounded-xl border border-slate-200/60 text-xs text-slate-500">
                         <div class="flex items-center gap-1.5 font-medium">
                             <span v-if="event.transMode === 'walk'">🚶‍♂️ 步行</span>
-                            <span v-else-if="event.transMode === 'drive'">🚗 開車</span>
-                            <span v-else>🚌 大眾運輸</span>
+                            <span v-else-if="event.transMode === 'drive'">🚗 開車/自駕</span>
+                            <span v-else>🚌 大眾運輸/內陸飛機</span>
                             <span>往目的地約 {{ event.transTime || '20' }} 分鐘</span>
                         </div>
                         <div class="flex gap-1 bg-slate-200/60 p-0.5 rounded-md">
@@ -114,28 +126,24 @@
                         </div>
                     </div>
 
-                    <div v-if="idx === 0 && selectedDay > 0" class="text-[10px] text-center bg-amber-50 text-amber-800 py-1.5 rounded-md mb-2 border border-amber-100">
-                        🏨 起點：{{ getPrevDayHotel(selectedDay) }}
-                    </div>
-
-                    <div v-if="event.category === '航班'" class="bg-gradient-to-r from-sky-900 to-indigo-950 text-white p-4 rounded-2xl shadow-md cursor-pointer" @click="openModal('event', event)">
+                    <div v-if="event.category === '航班'" class="bg-gradient-to-r from-amber-900 to-amber-950 text-white p-4 rounded-2xl shadow-md cursor-pointer" @click="openModal('event', event)">
                         <div class="flex justify-between items-center mb-2">
-                            <span class="bg-amber-400 text-sky-950 font-bold text-[10px] px-2 py-0.5 rounded-full">✈️ 航班資訊</span>
-                            <span class="text-xs font-mono text-sky-200">{{ event.flightNum }}</span>
+                            <span class="bg-amber-400 text-amber-950 font-bold text-[10px] px-2 py-0.5 rounded-full">✈️ 航班資訊</span>
+                            <span class="text-xs font-mono text-amber-200">{{ event.flightNum }}</span>
                         </div>
                         <div class="grid grid-cols-3 items-center text-center my-2">
-                            <div><span class="text-xl font-black block">{{ event.flightDep }}</span><span class="text-xs text-sky-200">{{ event.time }}</span></div>
-                            <div class="text-[10px] text-sky-300">── ✈️ ──<br>{{ event.flightDuration }}</div>
-                            <div><span class="text-xl font-black block">{{ event.flightArr }}</span><span class="text-xs text-sky-200">{{ event.flightArrTime }}</span></div>
+                            <div><span class="text-xl font-black block">{{ event.flightDep }}</span><span class="text-xs text-amber-200">{{ event.time }}</span></div>
+                            <div class="text-[10px] text-amber-300">── ✈️ ──<br>{{ event.flightDuration || '搭乘航程' }}</div>
+                            <div><span class="text-xl font-black block">{{ event.flightArr }}</span><span class="text-xs text-amber-200">{{ event.flightArrTime }}</span></div>
                         </div>
-                        <p v-if="event.note" class="text-xs text-sky-200/90 bg-white/10 p-2 rounded-xl mt-2 whitespace-pre-line">{{ event.note }}</p>
+                        <p v-if="event.note" class="text-xs text-amber-200/90 bg-white/10 p-2 rounded-xl mt-2 whitespace-pre-line">{{ event.note }}</p>
                     </div>
 
-                    <div v-else class="bg-white/95 backdrop-blur-md p-4 rounded-2xl border border-rose-50 shadow-sm hover:shadow-md transition-all cursor-pointer" @click="openModal('event', event)">
+                    <div v-else class="bg-white/95 backdrop-blur-md p-4 rounded-2xl border border-amber-50 shadow-sm hover:shadow-md transition-all cursor-pointer" @click="event.isHotelLink ? openEditHotelModal(event.rawHotel) : openModal('event', event)">
                         <div class="flex justify-between items-start mb-2">
                             <div class="flex items-center gap-1.5">
                                 <span class="text-xs font-bold px-2 py-0.5 rounded-md" :class="getCategoryClass(event.category)">{{ event.category }}</span>
-                                <span class="text-xs font-bold text-sky-700">⏰ {{ event.time }}</span>
+                                <span class="text-xs font-bold text-amber-800">{{ event.time }}</span>
                             </div>
                             <button @click.stop="triggerGoogleMap(event.location)" class="text-xs bg-emerald-50 text-emerald-700 font-bold border border-emerald-200 px-2.5 py-1 rounded-full">🗺️ 導航</button>
                         </div>
@@ -145,6 +153,7 @@
                             <p v-if="event.ticketPrice">🎫 門票: {{ event.ticketPrice }}</p>
                         </div>
                         <p v-if="event.note" class="text-xs text-slate-600 bg-amber-50/50 p-2.5 rounded-xl whitespace-pre-line">{{ event.note }}</p>
+                        <span v-if="event.isHotelLink" class="text-[10px] text-amber-600 block mt-1 text-right font-medium">ℹ️ 此項目與旅遊資訊住宿同步，點擊可編輯</span>
                     </div>
                 </div>
             </div>
@@ -152,57 +161,127 @@
 
         <div v-if="currentTab === 'info'" class="space-y-4 animate-fade-in">
             <div class="bg-gradient-to-br from-amber-50 to-orange-50 p-4 rounded-2xl border border-amber-200 shadow-sm">
-                <h3 class="text-sm font-bold text-amber-900 mb-3">🪙 港幣即時換算 (1 JPY = {{ exchangeRate }} HKD)</h3>
+                <h3 class="text-sm font-bold text-amber-900 mb-3">🪙 港幣即時換算 (1 AUD = {{ exchangeRate }} HKD)</h3>
                 <div class="grid grid-cols-2 gap-3">
-                    <input type="number" v-model.number="calcInputJPY" placeholder="輸入日圓 JPY" class="text-sm p-2.5 bg-white border border-amber-200 rounded-xl focus:outline-none font-bold">
-                    <div class="p-2.5 bg-amber-100 rounded-xl font-bold text-rose-600 flex items-center">HK$ {{ (calcInputJPY * exchangeRate).toFixed(2) }}</div>
+                    <input type="number" v-model.number="calcInputAUD" placeholder="輸入澳幣 AUD" class="text-sm p-2.5 bg-white border border-amber-200 rounded-xl focus:outline-none font-bold">
+                    <div class="p-2.5 bg-amber-100 rounded-xl font-bold text-rose-600 flex items-center">HK$ {{ (calcInputAUD * exchangeRate).toFixed(2) }}</div>
                 </div>
             </div>
 
-            <div class="bg-white/90 p-4 rounded-2xl border border-slate-200 shadow-sm space-y-3">
-                <h3 class="text-sm font-bold text-slate-800 border-b pb-2 flex items-center gap-1.5">🏨 酒店資訊</h3>
-                <p class="text-xs text-slate-600"><strong>名稱：</strong>東京淺草橫綱Hotel (Yokokuna Hotel Asakusa)</p>
-                <p class="text-xs text-slate-600"><strong>地址：</strong>東京都台東区浅草3丁目30-5</p>
-                <button @click="triggerGoogleMap('Asakusa Yokozuna Hotel')" class="w-full mt-2 py-2 bg-sky-900 text-amber-100 font-bold text-xs rounded-lg shadow-sm">開啟 Google Maps</button>
+            <div class="bg-white/95 p-4 rounded-2xl border border-amber-200 shadow-sm space-y-3">
+                <div class="flex justify-between items-center border-b pb-2">
+                    <h3 class="text-sm font-bold text-slate-800 flex items-center gap-1.5">🏨 多城市住宿明細清單</h3>
+                    <button @click="openAddHotelModal" class="text-xs bg-amber-600 text-white px-2 py-1 rounded-md font-bold hover:bg-amber-700 transition">＋ 新增住宿</button>
+                </div>
+
+                <div v-for="hotel in hotelList" :key="hotel.id" class="p-3 bg-amber-50/60 rounded-xl border border-amber-100/80 relative space-y-1.5 text-xs">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <span class="bg-amber-800 text-white font-black px-1.5 py-0.5 rounded text-[10px] mr-1.5 uppercase">{{ hotel.city }}</span>
+                            <strong class="text-sm text-slate-800">{{ hotel.name }}</strong>
+                        </div>
+                        <div class="flex gap-1.5">
+                            <button @click="openEditHotelModal(hotel)" class="text-blue-600 hover:underline">編輯</button>
+                            <button @click="deleteHotelItem(hotel.id)" class="text-rose-500 hover:underline">✕</button>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-1 text-slate-600 font-medium">
+                        <p>📅 <strong>入住:</strong> {{ hotel.checkIn || '未填' }}</p>
+                        <p>📅 <strong>退房:</strong> {{ hotel.checkOut || '未填' }}</p>
+                    </div>
+
+                    <div class="text-slate-600 space-y-0.5 bg-white/70 p-2 rounded-lg border border-amber-100/50">
+                        <p v-if="hotel.roomType">🛏️ <strong>房型:</strong> <span class="font-bold text-slate-800">{{ hotel.roomType }}</span></p>
+                        <p v-if="hotel.bookingRef">📄 <strong>確認碼 / 訂單號:</strong> <span class="font-mono bg-slate-100 px-1 rounded select-all font-bold text-slate-700">{{ hotel.bookingRef }}</span></p>
+                        <p v-if="hotel.address" class="flex items-center gap-1.5 mt-1">
+                            📍 <strong>地址:</strong> {{ hotel.address }}
+                            <button @click="copyText(hotel.address)" class="text-[10px] bg-slate-200 px-1 py-0.5 rounded text-slate-600">複製</button>
+                        </p>
+                    </div>
+
+                    <div class="flex justify-between items-center bg-slate-100 p-1.5 rounded-md mt-1">
+                        <span class="text-[11px] font-bold" :class="hotel.payStatus === '已線上付清' ? 'text-emerald-600' : 'text-amber-700 bg-amber-100/60 px-1 rounded'">
+                            💰 狀態: {{ hotel.payStatus }}
+                        </span>
+                        <span class="font-bold text-slate-700" v-if="hotel.price">
+                            價格: {{ hotel.price }}
+                        </span>
+                    </div>
+                </div>
             </div>
 
-            <div class="bg-red-50 p-4 rounded-2xl border border-red-200">
-                <h3 class="text-sm font-bold text-red-900 mb-2">🚨 緊急求助</h3>
-                <div class="grid grid-cols-2 gap-2 text-xs font-bold">
-                    <div class="bg-white p-2 rounded-xl text-center shadow-sm"><span class="text-red-600 text-lg">110</span><br>警察局</div>
-                    <div class="bg-white p-2 rounded-xl text-center shadow-sm"><span class="text-red-600 text-lg">119</span><br>救護車</div>
+            <div class="bg-white/95 p-4 rounded-2xl border border-emerald-200 shadow-sm space-y-3">
+                <div class="flex justify-between items-center border-b pb-2">
+                    <h3 class="text-sm font-bold text-emerald-900 flex items-center gap-1.5">🚗 租車與自駕登記資訊</h3>
+                    <button @click="openAddCarModal" class="text-xs bg-emerald-600 text-white px-2 py-1 rounded-md font-bold hover:bg-emerald-700 transition">＋ 新增租車</button>
+                </div>
+
+                <div v-if="carList.length === 0" class="text-center text-xs text-slate-400 py-4">
+                    🚘 暫無租車登記資訊，如需自駕請點右上角新增。
+                </div>
+
+                <div v-for="car in carList" :key="car.id" class="p-3 bg-emerald-50/50 rounded-xl border border-emerald-100 relative space-y-1.5 text-xs">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <span class="bg-emerald-800 text-white font-black px-1.5 py-0.5 rounded text-[10px] mr-1.5 uppercase">{{ car.city || '澳洲' }}</span>
+                            <strong class="text-sm text-slate-800">{{ car.company }} ({{ car.carModel || '未指定車型' }})</strong>
+                        </div>
+                        <div class="flex gap-1.5">
+                            <button @click="openEditCarModal(car)" class="text-blue-600 hover:underline">編輯</button>
+                            <button @click="deleteCarItem(car.id)" class="text-rose-500 hover:underline">✕</button>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-1 text-slate-600 bg-white/70 p-2 rounded-lg border border-emerald-100/50">
+                        <p>🔑 <strong>取車:</strong> {{ car.pickupTime || '未填' }}</p>
+                        <p>🏁 <strong>還車:</strong> {{ car.dropoffTime || '未填' }}</p>
+                        <p class="col-span-2">📍 <strong>取車地點:</strong> {{ car.pickupLocation || '未填' }}</p>
+                        <p v-if="car.carPlate" class="col-span-2">🔢 <strong>車牌號碼:</strong> <span class="bg-slate-100 px-1 rounded font-mono font-bold text-slate-700">{{ car.carPlate }}</span></p>
+                        <p v-if="car.bookingRef" class="col-span-2">📄 <strong>租車訂單號:</strong> <span class="font-mono bg-slate-100 px-1 rounded font-bold text-slate-700 select-all">{{ car.bookingRef }}</span></p>
+                    </div>
+
+                    <p v-if="car.note" class="text-slate-500 text-[11px] bg-slate-50 p-2 rounded whitespace-pre-line">📝 <strong>備註:</strong> {{ car.note }}</p>
                 </div>
             </div>
         </div>
 
+        <!-- 購物清單 UI 大升級區塊 -->
         <div v-if="currentTab === 'shopping'" class="space-y-3 animate-fade-in">
             <div v-if="shoppingList.length === 0" class="text-center text-xs text-slate-400 py-12">
-                🧺 購物清單空空如也，快點右下角「＋」加入戰利品目標！
+                🧺 購物清單空空如也，快點右下角「＋」加入澳洲伴手禮！
             </div>
-            <div v-for="shop in shoppingList" :key="shop.id" @click="openModal('shopping', shop)" class="bg-white/90 p-4 rounded-2xl border border-rose-50 shadow-sm flex justify-between items-center cursor-pointer hover:shadow-md transition-all">
-                <div class="flex items-center gap-3">
-                    <button @click.stop="shop.checked = !shop.checked; updateCloud();" class="text-xl focus:outline-none">
-                        {{ shop.checked ? '⭐' : '☆' }}
-                    </button>
-                    <div v-if="shop.image" class="w-12 h-12 rounded-lg overflow-hidden border border-slate-100 bg-slate-50 flex-shrink-0">
-                        <img :src="shop.image" class="w-full h-full object-cover">
+            
+            <div v-for="shop in shoppingList" :key="shop.id" class="bg-white/90 p-4 rounded-2xl border border-amber-50 shadow-sm flex flex-col gap-3">
+                <div class="flex justify-between items-center">
+                    <div class="flex items-center gap-3 flex-1 min-w-0">
+                        <button @click="shop.checked = !shop.checked; updateCloud();" class="text-xl focus:outline-none flex-shrink-0">
+                            {{ shop.checked ? '⭐' : '☆' }}
+                        </button>
+                        <span class="font-bold text-sm truncate" :class="shop.checked ? 'line-through text-slate-400' : 'text-slate-700'">
+                            {{ shop.name }}
+                        </span>
                     </div>
-                    <div>
-                        <span class="font-bold text-sm block" :class="shop.checked ? 'line-through text-slate-400' : 'text-slate-700'">{{ shop.name }}</span>
-                        <span class="text-[10px] text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded font-medium mt-1 inline-block">📝 點擊可編輯修改</span>
+                    <div class="flex items-center gap-2 flex-shrink-0 ml-2">
+                        <button @click="openEditShoppingModal(shop)" class="text-xs bg-amber-50 text-amber-800 px-2 py-1 rounded-md font-medium hover:bg-amber-100">編輯</button>
+                        <button @click="deleteShoppingItem(shop.id)" class="text-slate-300 hover:text-rose-500 text-xs px-2 py-1">✕</button>
                     </div>
                 </div>
-                <button @click.stop="deleteShoppingItem(shop.id)" class="text-slate-300 hover:text-rose-500 text-xs px-2 py-1">✕</button>
+                
+                <!-- 如果有圖片，則渲染縮圖 -->
+                <div v-if="shop.image" class="w-20 h-20 relative rounded-xl overflow-hidden border border-slate-100 shadow-sm cursor-zoom-in" @click="zoomImage(shop.image)">
+                    <img :src="shop.image" alt="商品照片" class="w-full h-full object-cover">
+                </div>
             </div>
         </div>
 
         <div v-if="currentTab === 'wallet'" class="space-y-4 animate-fade-in">
             <div class="bg-slate-900 text-white p-5 rounded-2xl text-center shadow-lg">
-                <span class="text-[10px] text-sky-300 tracking-widest font-bold">TOTAL EXPENSES</span>
+                <span class="text-[10px] text-amber-300 tracking-widest font-bold">TOTAL EXPENSES</span>
                 <div class="flex justify-around mt-2">
                     <div>
-                        <p class="text-[10px] text-slate-400">日幣總計</p>
-                        <h2 class="text-xl font-black text-amber-300">¥ {{ totalJPY.toLocaleString() }}</h2>
+                        <p class="text-[10px] text-slate-400">澳幣總計</p>
+                        <h2 class="text-xl font-black text-amber-300">$ {{ totalAUD.toLocaleString() }}</h2>
                     </div>
                     <div class="border-l border-white/20 pl-4">
                         <p class="text-[10px] text-slate-400">折合港幣</p>
@@ -211,10 +290,6 @@
                 </div>
             </div>
 
-            <div v-if="expenses.length === 0" class="text-center text-xs text-slate-400 py-8">
-                💰 目前還沒有記帳紀錄喔！
-            </div>
-            
             <div v-for="exp in expenses" :key="exp.id" class="bg-white/90 p-3.5 rounded-2xl border border-slate-100 shadow-sm flex justify-between items-center">
                 <div class="flex items-center gap-3">
                     <span class="text-[10px] px-2 py-1 rounded bg-slate-100 font-bold text-slate-600">{{ exp.category }}</span>
@@ -224,7 +299,7 @@
                     </div>
                 </div>
                 <div class="text-right flex items-center gap-3">
-                    <span class="text-sm font-bold text-slate-700">¥ {{ exp.amount.toLocaleString() }}</span>
+                    <span class="text-sm font-bold text-slate-700">$ {{ exp.amount.toLocaleString() }}</span>
                     <button @click="deleteExpenseItem(exp.id)" class="text-slate-300 hover:text-rose-500 text-xs">✕</button>
                 </div>
             </div>
@@ -232,7 +307,7 @@
 
     </main>
 
-    <button v-if="currentTab !== 'info'" @click="triggerFAB" class="fixed bottom-24 right-6 w-14 h-14 bg-sky-900 text-amber-100 rounded-full text-3xl shadow-2xl flex items-center justify-center z-50 focus:outline-none hover:scale-105 transition-all">＋</button>
+    <button v-if="currentTab !== 'info'" @click="triggerFAB" class="fixed bottom-24 right-6 w-14 h-14 bg-amber-950 text-amber-100 rounded-full text-3xl shadow-2xl flex items-center justify-center z-50 focus:outline-none hover:scale-105 transition-all">＋</button>
 
     <div v-if="showModal" class="fixed inset-0 bg-black/60 z-[60] flex items-end justify-center p-4 backdrop-blur-sm animate-fade-in" @click.self="closeModal">
         <div class="bg-white w-full max-w-md rounded-t-3xl p-5 space-y-4 max-h-[85vh] overflow-y-auto shadow-2xl">
@@ -241,6 +316,90 @@
                 <button @click="closeModal" class="text-slate-400 text-lg font-bold px-2">✕</button>
             </div>
             
+            <div v-if="modalType === 'hotel'" class="space-y-3 text-xs">
+                <div class="grid grid-cols-3 gap-2">
+                    <div>
+                        <label class="block text-slate-500 font-bold mb-1">城市區域</label>
+                        <input type="text" v-model="modalData.city" class="w-full p-2 bg-slate-50 border rounded-xl font-bold" placeholder="如 sydney">
+                    </div>
+                    <div class="col-span-2">
+                        <label class="block text-slate-500 font-bold mb-1">飯店住宿名稱</label>
+                        <input type="text" v-model="modalData.name" class="w-full p-2 bg-slate-50 border rounded-xl font-bold" placeholder="輸入飯店完整名稱">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div><label class="block text-slate-500 font-bold mb-1">入住日期</label><input type="date" v-model="modalData.checkIn" class="w-full p-2 bg-slate-50 border rounded-xl"></div>
+                    <div><label class="block text-slate-500 font-bold mb-1">退房日期</label><input type="date" v-model="modalData.checkOut" class="w-full p-2 bg-slate-50 border rounded-xl"></div>
+                </div>
+                <div>
+                    <label class="block text-slate-500 font-bold mb-1">🛏️ 可編輯房型</label>
+                    <input type="text" v-model="modalData.roomType" class="w-full p-2 bg-slate-50 border rounded-xl font-bold" placeholder="如: 標準雙人房 / 豪華雙床房">
+                </div>
+                <div>
+                    <label class="block text-slate-500 font-bold mb-1">📄 確認碼 / 訂單號</label>
+                    <input type="text" v-model="modalData.bookingRef" class="w-full p-2 bg-slate-50 border rounded-xl font-mono" placeholder="請輸入預訂確認代碼">
+                </div>
+                <div>
+                    <label class="block text-slate-500 font-bold mb-1">📍 飯店詳細地址</label>
+                    <input type="text" v-model="modalData.address" class="w-full p-2 bg-slate-50 border rounded-xl" placeholder="輸入以便一鍵複製導航">
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block text-slate-500 font-bold mb-1">💰 付款狀態</label>
+                        <select v-model="modalData.payStatus" class="w-full p-2 bg-slate-50 border rounded-xl font-bold">
+                            <option>已線上付清</option><option>到店面付</option><option>未付款</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-slate-500 font-bold mb-1">總價格 (可選填)</label>
+                        <input type="text" v-model="modalData.price" class="w-full p-2 bg-slate-50 border rounded-xl" placeholder="如 $450 AUD">
+                    </div>
+                </div>
+                <button @click="saveHotelItem" class="w-full bg-amber-950 text-amber-100 py-3 rounded-xl font-bold shadow-md text-sm mt-2">💾 儲存住宿設定</button>
+            </div>
+
+            <div v-if="modalType === 'car'" class="space-y-3 text-xs">
+                <div class="grid grid-cols-3 gap-2">
+                    <div><label class="block text-slate-500 font-bold mb-1">自駕城市</label><input type="text" v-model="modalData.city" class="w-full p-2 bg-slate-50 border rounded-xl font-bold" placeholder="如 墨爾本"></div>
+                    <div class="col-span-2"><label class="block text-slate-500 font-bold mb-1">租車公司名稱</label><input type="text" v-model="modalData.company" class="w-full p-2 bg-slate-50 border rounded-xl font-bold" placeholder="如 Hertz / Avis"></div>
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div><label class="block text-slate-500 font-bold mb-1">預訂車型</label><input type="text" v-model="modalData.carModel" class="w-full p-2 bg-slate-50 border rounded-xl" placeholder="如 SUV / Camry"></div>
+                    <div><label class="block text-slate-500 font-bold mb-1">🔢 車牌號碼</label><input type="text" v-model="modalData.carPlate" class="w-full p-2 bg-slate-50 border rounded-xl font-mono font-bold" placeholder="取車後可補填"></div>
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div><label class="block text-slate-500 font-bold mb-1">🔑 取車時間時間</label><input type="text" v-model="modalData.pickupTime" class="w-full p-2 bg-slate-50 border rounded-xl" placeholder="11/09 10:00"></div>
+                    <div><label class="block text-slate-500 font-bold mb-1">🏁 還車時間時間</label><input type="text" v-model="modalData.dropoffTime" class="w-full p-2 bg-slate-50 border rounded-xl" placeholder="11/12 18:00"></div>
+                </div>
+                <div><label class="block text-slate-500 font-bold mb-1">📍 取車/還車詳細地點</label><input type="text" v-model="modalData.pickupLocation" class="w-full p-2 bg-slate-50 border rounded-xl" placeholder="如 墨爾本機場 T2 櫃檯"></div>
+                <div><label class="block text-slate-500 font-bold mb-1">📄 租車訂單確認號</label><input type="text" v-model="modalData.bookingRef" class="w-full p-2 bg-slate-50 border rounded-xl font-mono" placeholder="填寫確認信中的代號"></div>
+                <div><label class="block text-slate-500 font-bold mb-1">📝 自駕随手備註 (如保險詳情等)</label><textarea rows="2" v-model="modalData.note" class="w-full p-2 bg-slate-50 border rounded-xl " placeholder="如: 已投保全險、滿油取還"></textarea></div>
+                <button @click="saveCarItem" class="w-full bg-emerald-800 text-white py-3 rounded-xl font-bold shadow-md text-sm mt-2">💾 儲存租車自駕資訊</button>
+            </div>
+
+            <div v-if="modalType === 'dateSettings'" class="space-y-4 text-sm">
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 mb-1">設定旅程第一天 (首日出發日期)</label>
+                    <input type="date" v-model="tripStartDate" @change="recalculateDates" class="w-full p-2.5 bg-slate-50 border rounded-xl font-bold text-center">
+                </div>
+                <button @click="closeModal" class="w-full bg-amber-950 text-amber-100 py-3 rounded-xl font-bold shadow-md">套用並關閉</button>
+            </div>
+
+            <div v-if="modalType === 'dayTitleEdit'" class="space-y-3 text-sm">
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 mb-1">編輯 Day {{ selectedDay + 1 }} 的今日主題文字</label>
+                    <input type="text" v-model="days[selectedDay].title" class="w-full p-2.5 bg-slate-50 border rounded-xl font-bold mb-3" placeholder="請輸入今天的主題...">
+                    
+                    <label class="block text-xs font-bold text-slate-500 mb-1">🎯 當天定位城市 (影響天氣預報)</label>
+                    <select v-model="days[selectedDay].city" class="w-full p-2.5 bg-slate-50 border rounded-xl font-bold">
+                        <option value="sydney">雪梨 / 悉尼 (Sydney)</option>
+                        <option value="uluru">烏魯魯 (Uluru / Ayers Rock)</option>
+                        <option value="melbourne">墨爾本 (Melbourne)</option>
+                    </select>
+                </div>
+                <button @click="updateCloud(); fetchAustraliaWeather(); closeModal();" class="w-full bg-amber-950 text-amber-100 py-3 rounded-xl font-bold shadow-md">💾 儲存並同步修改</button>
+            </div>
+
             <div v-if="modalType === 'event'" class="space-y-3 text-sm">
                 <div>
                     <label class="block text-xs font-bold text-slate-500 mb-1">分類</label>
@@ -254,7 +413,7 @@
                         <input type="text" v-model="modalData.time" class="w-full p-2.5 bg-slate-50 border rounded-xl font-mono">
                     </div>
                     <div>
-                        <label class="block text-xs font-bold text-slate-500 mb-1">交通時間 (分鐘)</label>
+                        <label class="block text-xs font-bold text-slate-500 mb-1">行車/交通時間 (分鐘)</label>
                         <input type="text" v-model="modalData.transTime" class="w-full p-2.5 bg-slate-50 border rounded-xl">
                     </div>
                 </div>
@@ -263,11 +422,11 @@
                     <input type="text" v-model="modalData.location" class="w-full p-2.5 bg-slate-50 border rounded-xl font-bold">
                 </div>
 
-                <div v-if="modalData.category === '航班'" class="p-3 bg-sky-50 rounded-xl space-y-2 border border-sky-100">
+                <div class="p-3 bg-amber-50 rounded-xl space-y-2 border border-amber-100" v-if="modalData.category === '航班'">
                     <div class="grid grid-cols-3 gap-2">
-                        <div><label class="text-[10px] text-slate-500">航班編號</label><input type="text" v-model="modalData.flightNum" class="w-full p-1 bg-white border rounded text-xs"></div>
-                        <div><label class="text-[10px] text-slate-500">起飛機場</label><input type="text" v-model="modalData.flightDep" class="w-full p-1 bg-white border rounded text-xs"></div>
-                        <div><label class="text-[10px] text-slate-500">到達機場</label><input type="text" v-model="modalData.flightArr" class="w-full p-1 bg-white border rounded text-xs"></div>
+                        <div><label class="text-[10px] text-slate-500">航班代號</label><input type="text" v-model="modalData.flightNum" class="w-full p-1 bg-white border rounded text-xs"></div>
+                        <div><label class="text-[10px] text-slate-500">起飛起點</label><input type="text" v-model="modalData.flightDep" class="w-full p-1 bg-white border rounded text-xs"></div>
+                        <div><label class="text-[10px] text-slate-500">到達終點</label><input type="text" v-model="modalData.flightArr" class="w-full p-1 bg-white border rounded text-xs"></div>
                     </div>
                     <div class="grid grid-cols-2 gap-2">
                         <div><label class="text-[10px] text-slate-500">航程時間</label><input type="text" v-model="modalData.flightDuration" class="w-full p-1 bg-white border rounded text-xs"></div>
@@ -275,67 +434,59 @@
                     </div>
                 </div>
 
-                <div class="grid grid-cols-2 gap-3" v-if="modalData.category !== '航班'">
-                    <div><label class="block text-xs font-bold text-slate-500 mb-1">營業時間</label><input type="text" v-model="modalData.openTime" class="w-full p-2.5 bg-slate-50 border rounded-xl"></div>
-                    <div><label class="block text-xs font-bold text-slate-500 mb-1">門票費用</label><input type="text" v-model="modalData.ticketPrice" class="w-full p-2.5 bg-slate-50 border rounded-xl"></div>
-                </div>
                 <div>
                     <label class="block text-xs font-bold text-slate-500 mb-1">備註 / 隨手記</label>
                     <textarea rows="3" v-model="modalData.note" class="w-full p-2.5 bg-slate-50 border rounded-xl text-xs"></textarea>
                 </div>
                 <div class="flex gap-2 pt-2">
                     <button v-if="isEditMode" @click="deleteEvent" class="flex-1 bg-rose-50 text-rose-600 border border-rose-200 py-3 rounded-xl font-bold">🗑️ 刪除</button>
-                    <button @click="saveEvent" class="flex-[2] bg-sky-950 text-amber-100 py-3 rounded-xl font-bold shadow-md">💾 儲存確認</button>
+                    <button @click="saveEvent" class="flex-[2] bg-amber-950 text-amber-100 py-3 rounded-xl font-bold shadow-md">💾 儲存確認</button>
                 </div>
             </div>
 
-            <div v-if="modalType === 'shopping'" class="space-y-3 text-sm">
+            <!-- 購物項目可編輯、上傳照片的進階 Modal UI -->
+            <div v-if="modalType === 'shopping'" class="space-y-4 text-xs">
                 <div>
-                    <label class="block text-xs font-bold text-slate-500 mb-1">商品名稱</label>
-                    <input type="text" v-model="modalData.name" placeholder="例如：Chiikawa 吊飾" class="w-full p-2.5 bg-slate-50 border rounded-xl font-bold">
+                    <label class="block text-slate-500 font-bold mb-1">🎁 商品名稱 / 備註</label>
+                    <input type="text" v-model="modalData.name" placeholder="請填寫商品名稱，例如：TimTam 巧克力" class="w-full p-2.5 bg-slate-50 border rounded-xl font-bold text-sm">
                 </div>
+                
                 <div>
-                    <label class="block text-xs font-bold text-slate-500 mb-1">商品相片</label>
-                    <div v-if="modalData.image" class="mb-2 flex items-center gap-3 bg-slate-50 p-2 rounded-xl border">
-                        <img :src="modalData.image" class="w-16 h-16 object-cover rounded-lg border">
-                        <button @click="modalData.image = null" class="text-xs bg-rose-50 text-rose-600 border border-rose-200 px-2 py-1 rounded-md font-bold">移除圖片</button>
+                    <label class="block text-slate-500 font-bold mb-1">📸 附加參考商品照片 (選填)</label>
+                    <div class="space-y-2">
+                        <!-- 檔案選擇器 -->
+                        <input type="file" accept="image/*" @change="handleShoppingImageUpload" class="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-amber-50 file:text-amber-950 hover:file:bg-amber-100">
+                        <p class="text-[10px] text-slate-400">💡 支援直接用手機相機拍照或從相簿選擇圖片</p>
+                        
+                        <!-- 預覽縮圖 -->
+                        <div v-if="modalData.image" class="relative w-24 h-24 rounded-xl overflow-hidden border mt-2 group">
+                            <img :src="modalData.image" class="w-full h-full object-cover">
+                            <button @click="modalData.image = ''" class="absolute top-1 right-1 bg-black/60 text-white rounded-full w-5 h-5 flex items-center justify-center font-bold text-[10px]">✕</button>
+                        </div>
                     </div>
-                    <input type="file" accept="image/*" @change="handleImageUpload" class="w-full text-xs text-slate-500 file:mr-3 file:py-2 file:px-3 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-sky-50 file:text-sky-700 hover:file:bg-sky-100">
                 </div>
-                <div class="flex gap-2 pt-2">
-                    <button v-if="isEditMode" @click="deleteShoppingItem(modalData.id)" class="flex-1 bg-rose-50 text-rose-600 border border-rose-200 py-3 rounded-xl font-bold">🗑️ 刪除</button>
-                    <button @click="saveShoppingItem" class="flex-[2] bg-sky-950 text-amber-100 py-3 rounded-xl font-bold shadow-md">
-                        {{ isEditMode ? '💾 儲存修改' : '🧺 加入購物清單' }}
-                    </button>
-                </div>
+                
+                <button @click="saveShoppingItem" class="w-full bg-amber-950 text-amber-100 py-3 rounded-xl font-bold shadow-md text-sm">
+                    {{ isEditMode ? '💾 儲存修改' : '🧺 加入購物清單' }}
+                </button>
             </div>
 
             <div v-if="modalType === 'wallet'" class="space-y-3 text-sm">
-                <div>
-                    <label class="block text-xs font-bold text-slate-500 mb-1">花費類別</label>
-                    <select v-model="modalData.category" class="w-full p-2.5 bg-slate-50 border rounded-xl">
-                        <option>飲食</option><option>購物</option><option>交通</option><option>門票</option><option>其他</option>
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-slate-500 mb-1">項目名稱</label>
-                    <input type="text" v-model="modalData.name" placeholder="例如：一蘭拉麵晚餐" class="w-full p-2.5 bg-slate-50 border rounded-xl font-bold">
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-slate-500 mb-1">金額 (日幣 JPY)</label>
-                    <input type="number" v-model.number="modalData.amount" placeholder="¥ 數字金額" class="w-full p-2.5 bg-slate-50 border rounded-xl font-mono font-bold">
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-slate-500 mb-1">消費日期</label>
-                    <input type="date" v-model="modalData.date" class="w-full p-2.5 bg-slate-50 border rounded-xl">
-                </div>
-                <button @click="saveExpenseItem" class="w-full bg-sky-950 text-amber-100 py-3 rounded-xl font-bold mt-2 shadow-md">💰 儲存此筆消費</button>
+                <input type="text" v-model="modalData.name" placeholder="花費項目" class="w-full p-2.5 bg-slate-50 border rounded-xl font-bold">
+                <input type="number" v-model.number="modalData.amount" placeholder="金額 (AUD)" class="w-full p-2.5 bg-slate-50 border rounded-xl font-bold">
+                <button @click="saveExpenseItem" class="w-full bg-amber-950 text-amber-100 py-3 rounded-xl font-bold shadow-md">💰 儲存記帳</button>
             </div>
         </div>
     </div>
 
+    <!-- 全螢幕圖片放大檢視燈箱 (Lightbox) -->
+    <div v-if="zoomedImageSrc" class="fixed inset-0 bg-black/95 z-[100] flex items-center justify-center p-4 animate-fade-in" @click="zoomedImageSrc = null">
+        <div class="absolute top-6 right-6 text-white text-2xl font-black cursor-pointer bg-black/40 w-10 h-10 rounded-full flex items-center justify-center select-none">✕</div>
+        <img :src="zoomedImageSrc" alt="放大圖片檢視" class="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl transition-all cursor-zoom-out">
+    </div>
+
     <nav class="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white/95 backdrop-blur-md border-t border-slate-200 z-40 flex justify-around py-3 px-2">
-        <button v-for="tab in tabs" :key="tab.id" @click="currentTab = tab.id" :class="currentTab === tab.id ? 'text-sky-900 font-bold' : 'text-slate-400'" class="flex flex-col items-center flex-1 focus:outline-none">
+        <button v-for="tab in tabs" :key="tab.id" @click="currentTab = tab.id" :class="currentTab === tab.id ? 'text-amber-900 font-bold' : 'text-slate-400'" class="flex flex-col items-center flex-1">
             <span class="text-xl">{{ tab.icon }}</span><span class="text-[10px] mt-1">{{ tab.name }}</span>
         </button>
     </nav>
@@ -343,32 +494,43 @@
 </div>
 
 <script>
-const { createApp, ref, computed, onMounted, nextTick } = Vue;
+const { createApp, ref, computed, onMounted, watch } = Vue;
 
-const SUPABASE_URL = "https://vumrenvgdbjeaiuvnuzx.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ1bXJlbnZnZGJqZWFpdXZudXp4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEwNTI4NDcsImV4cCI6MjA5NjYyODg0N30.Rn_WmoNaz1-PfHDznfJY0g_UU-kWs3UR4Wd5e2SchEo";
-const FIXED_ROOM_ID = "tokyo2026_family";
+const SUPABASE_URL = "https://nyqxxfcryaacfwsrfpeq.supabase.co/";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im55cXh4ZmNyeWFhY2Z3c3JmcGVxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODExNDM2NjYsImV4cCI6MjA5NjcxOTY2Nn0.YWzZ1SG2j6rjg6qIBLN6KkdQdSQE9aLvlMCxcHOUwvE";
+const FIXED_ROOM_ID = "australia2026_family"; 
 
 createApp({
     setup() {
         const currentTab = ref('itinerary');
         const selectedDay = ref(0);
-        const exchangeRate = ref(0.051); 
-        const calcInputJPY = ref(null);
-        
+        const exchangeRate = ref(5.15); 
+        const calcInputAUD = ref(null);
+        const tripStartDate = ref("2026-11-01"); 
         const isSynced = ref(false);
         let supabaseClient = null;
-        let cloudChannel = null;
-
         const weatherDatabase = ref({});
+        
+        // 全螢幕圖片放大專用變數
+        const zoomedImageSrc = ref(null);
 
-        const days = [
-            { weekShort:'Mon', dateNum:'15', title:'抵達與淺草寺散步', dateStr: '2026-06-15' },
-            { weekShort:'Tue', dateNum:'16', title:'御殿場 Outlet', dateStr: '2026-06-16' },
-            { weekShort:'Wed', dateNum:'17', title:'築地與分頭活動', dateStr: '2026-06-17' },
-            { weekShort:'Thu', dateNum:'18', title:'晴空塔與銀座', dateStr: '2026-06-18' },
-            { weekShort:'Fri', dateNum:'19', title:'成田機場回港', dateStr: '2026-06-19' }
-        ];
+        const days = ref([
+            { weekShort:'Sun', dateNum:'11/01', title:'抵達悉尼與 YEHS Hotel 入住', dateStr: '2026-11-01', city: 'sydney' },
+            { weekShort:'Mon', dateNum:'11/02', title:'悉尼市區與 QVB 購物探索', dateStr: '2026-11-02', city: 'sydney' },
+            { weekShort:'Tue', dateNum:'11/03', title:'悉尼歌劇院與海港散步', dateStr: '2026-11-03', city: 'sydney' },
+            { weekShort:'Wed', dateNum:'11/04', title:'飛往烏魯魯與失落駱駝酒店入住', dateStr: '2026-11-04', city: 'uluru' },
+            { weekShort:'Thu', dateNum:'11/05', title:'烏魯魯巨岩日出與紅土探索', dateStr: '2026-11-05', city: 'uluru' },
+            { weekShort:'Fri', dateNum:'11/06', title:'卡塔丘塔風之谷奇景漫步', dateStr: '2026-11-06', city: 'uluru' },
+            { weekShort:'Sat', dateNum:'11/07', title:'原野星光展與沙漠星空晚宴', dateStr: '2026-11-07', city: 'uluru' },
+            { weekShort:'Sun', dateNum:'11/08', title:'飛往墨爾本與市區微醺之夜', dateStr: '2026-11-08', city: 'melbourne' },
+            { weekShort:'Mon', dateNum:'11/09', title:'前往 Balgowine Estate 莊園享受', dateStr: '2026-11-09', city: 'melbourne' },
+            { weekShort:'Tue', dateNum:'11/10', title:'墨爾本咖啡巷弄散策與城市深度遊', dateStr: '2026-11-10', city: 'melbourne' },
+            { weekShort:'Wed', dateNum:'11/11', title:'大洋路一日遊探訪十二門徒石', dateStr: '2026-11-11', city: 'melbourne' },
+            { weekShort:'Thu', dateNum:'11/12', title:'菲利普島神仙企鵝歸巢奇觀', dateStr: '2026-11-12', city: 'melbourne' },
+            { weekShort:'Fri', dateNum:'11/13', title:'維多利亞州國立美術館與市區血拼', dateStr: '2026-11-13', city: 'melbourne' },
+            { weekShort:'Sat', dateNum:'11/14', title:'普芬比利蒸汽火車與酒莊補購 / 晚間前往機場', dateStr: '2026-11-14', city: 'melbourne' },
+            { weekShort:'Sun', dateNum:'11/15', title:'凌晨搭機平安返港', dateStr: '2026-11-15', city: 'melbourne' }
+        ]);
 
         const tabs = [
             {id:'itinerary', name:'每日行程', icon:'📍'}, {id:'info', name:'旅遊資訊', icon:'ℹ️'},
@@ -376,205 +538,288 @@ createApp({
         ];
         
         const defaultEvents = [
-            { id: 1, dayIdx: 0, category: '航班', location: '成田空港', time: '14:55', flightNum: 'HX608', flightDep: 'HKG', flightArr: 'NRT', flightArrTime: '20:10', flightDuration: '4h 15m', note: '抵達成田空港\n辦理入境提取行李。', transTime: '50', transMode: 'transit' },
-            { id: 2, dayIdx: 0, category: '住宿', location: '東京淺草橫綱Hotel', time: '21:30', note: '辦理入住手續', transTime: '15', transMode: 'walk' },
-            { id: 3, dayIdx: 0, category: '美食', location: '淺草附近拉麵/居酒屋', time: '22:00', note: '宵夜與放鬆', transTime: '0', transMode: 'walk' },
-            { id: 4, dayIdx: 1, category: '景點', location: '御殿場 Premium Outlets', time: '10:00', openTime: '10:00-20:00', note: '瘋狂購物行程！', transTime: '120', transMode: 'drive' },
-            { id: 5, dayIdx: 2, category: '美食', location: '築地場外市場', time: '08:30', note: '早餐享用海鮮丼與玉子燒', transTime: '30', transMode: 'transit' },
-            { id: 6, dayIdx: 2, category: '景點', location: '分頭活動 / 自由逛街', time: '13:00', note: '各自安排想去的景點', transTime: '40', transMode: 'transit' },
-            { id: 7, dayIdx: 3, category: '景點', location: '東京晴空塔 (SKYTREE)', time: '09:35', ticketPrice: '已預約 09:30 門票', note: '登高看東京全景', transTime: '30', transMode: 'transit' },
-            { id: 8, dayIdx: 3, category: '景點', location: '銀座 / 有樂町散策', time: '14:00', note: '逛街精品、無印良品旗艦店', transTime: '25', transMode: 'transit' },
-            { id: 9, dayIdx: 4, category: '景點', location: '淺草寺周邊最後巡禮', time: '09:00', note: '買手信、補貨', transTime: '60', transMode: 'transit' },
-            { id: 10, dayIdx: 4, category: '航班', location: '成田空港', time: '15:30', flightNum: 'HX609', flightDep: 'NRT', flightArr: 'HKG', flightArrTime: '21:00', flightDuration: '4h 30m', note: '起飛回港，結束美好旅程', transTime: '0', transMode: 'transit' }
+            { id: 1, dayIdx: 0, category: '航班', location: '悉尼機場 (SYD) 抵達', time: '07:15', flightNum: 'CX111', flightDep: 'HKG', flightArr: 'SYD', flightArrTime: '07:15', flightDuration: '國泰航空 (10/31 19:05起飛)', note: '抵達澳洲悉尼\n辦理電子簽證與入境提取行李。', transTime: '35', transMode: 'transit' },
+            { id: 2, dayIdx: 0, category: '住宿', location: 'YEHS Hotel Sydney QVB', time: '15:00', note: '辦理酒店 Check-in 入住手續 (11/1 - 11/4 共3晚)', transTime: '10', transMode: 'walk' },
+            { id: 3, dayIdx: 3, category: '航班', location: '悉尼 ✈️ 烏魯魯', time: '10:35', flightNum: 'JQ660', flightDep: 'SYD', flightArr: 'AYR', flightArrTime: '12:25', flightDuration: '捷星航空', note: '搭乘國內線飛往澳洲紅土中心烏魯魯。', transTime: '20', transMode: 'transit' },
+            { id: 4, dayIdx: 3, category: '住宿', location: 'The Lost Camel Hotel', time: '14:00', note: '辦理烏魯魯住宿入住手續 (11/4 - 11/8 共4晚)', transTime: '15', transMode: 'drive' },
+            { id: 5, dayIdx: 7, category: '航班', location: '烏魯魯 ✈️ 墨爾本', time: '09:25', flightNum: 'JQ665', flightDep: 'AYR', flightArr: 'MEL', flightArrTime: '13:35', flightDuration: '捷星航空', note: '從小沙漠飛往文化之都墨爾本。', transTime: '40', transMode: 'transit' },
+            { id: 6, dayIdx: 7, category: '住宿', location: 'TEST Hotel Melbourne', time: '15:00', note: '辦理墨爾本第一晚飯店入住手續 (11/8 - 11/9)', transTime: '20', transMode: 'transit' },
+            { id: 7, dayIdx: 8, category: '住宿', location: 'Balgowine Estate', time: '14:00', note: '移動至亞拉河谷 Balgowine Estate 莊園度假飯店入住 (11/9 - 11/10)', transTime: '60', transMode: 'drive' },
+            { id: 8, dayIdx: 13, category: '交通', location: '晚間準備出發前往墨爾本機場', time: '21:30', note: '因回港航班為 15 號凌晨，今晚 21:30 左右就需動身前往機場辦理退稅手續。', transTime: '45', transMode: 'transit' },
+            { id: 9, dayIdx: 14, category: '航班', location: '回港航班 (CX178) 啟航', time: '00:45', flightNum: 'CX178', flightDep: 'MEL', flightArr: 'HKG', flightArrTime: '06:45', flightDuration: '國泰航空直飛', note: '航班已於 11/15 凌晨 00:45 起飛，預計早上 06:45 抵達香港國際機場。', transTime: '10', transMode: 'transit' }
+        ];
+
+        const defaultHotels = [
+            { id: 1, city: "sydney", name: "YEHS Hotel Sydney QVB", checkIn: "2026-11-01", checkOut: "2026-11-04", roomType: "標準房型", bookingRef: "請補上資料", address: "147 York St, Sydney NSW 2000", payStatus: "已線上付清", price: "", note: "" },
+            { id: 2, city: "uluru", name: "The Lost Camel Hotel", checkIn: "2026-11-04", checkOut: "2026-11-08", roomType: "標準雙人房", bookingRef: "請補上資料", address: "Yulara Drive, Yulara NT 0872", payStatus: "已線上付清", price: "", note: "" },
+            { id: 3, city: "melbourne", name: "TEST Hotel Melbourne", checkIn: "2026-11-08", checkOut: "2026-11-09", roomType: "市區客房", bookingRef: "請補 on 資料", address: "Melbourne VIC 3000", payStatus: "已線上付清", price: "", note: "" },
+            { id: 4, city: "melbourne", name: "Balgowine Estate", checkIn: "2026-11-09", checkOut: "2026-11-10", roomType: "酒莊豪華度假房", bookingRef: "請補上資料", address: "1309 Melba Hwy, Yarra Glen VIC 3775", payStatus: "已線上付清", price: "", note: "" }
         ];
 
         const events = ref([...defaultEvents]);
+        const hotelList = ref([...defaultHotels]);
+        const carList = ref([]); 
         const shoppingList = ref([]);
         const expenses = ref([]);
 
         const showModal = ref(false); const isEditMode = ref(false); const modalType = ref(''); const modalData = ref({}); let currentTargetEventId = null;
 
-        // 動態計算彈窗標題
         const modalTitle = computed(() => {
-            if (modalType.value === 'shopping') {
-                return isEditMode.value ? '📝 編輯修改採購商品' : '🧺 新增採購目標商品';
-            }
-            if (modalType.value === 'wallet') return '💰 新增消費記帳';
+            if (modalType.value === 'hotel') return isEditMode.value ? '📝 編輯下榻住宿資訊' : '🏨 新增多城市住宿地點';
+            if (modalType.value === 'car') return isEditMode.value ? '📝 編輯自駕租車明細' : '🚗 新增澳洲自駕租車明細';
+            if (modalType.value === 'dateSettings') return '📅 整體出發首日設定';
+            if (modalType.value === 'dayTitleEdit') return '📝 編輯單日主題摘要與天氣定位';
+            if (modalType.value === 'shopping') return isEditMode.value ? '📝 編輯澳洲採購目標項目' : '🧺 新增澳洲採購目標';
+            if (modalType.value === 'wallet') return '💰 新增消費記帳 (AUD)';
             return isEditMode.value ? '📝 編輯行程項目' : '✨ 新增行程項目';
         });
 
-        const connectToSupabase = async () => {
-            try {
-                supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-                
-                const { data, error } = await supabaseClient
-                    .from('trips')
-                    .select('*')
-                    .eq('room_id', FIXED_ROOM_ID)
-                    .maybeSingle();
+        const openAddHotelModal = () => {
+            modalType.value = 'hotel'; isEditMode.value = false;
+            modalData.value = { city: '', name: '', checkIn: '', checkOut: '', roomType: '', bookingRef: '', address: '', payStatus: '已線上付清', price: '', note: '' };
+            showModal.value = true;
+        };
 
-                if (data) {
-                    if (data.events) events.value = data.events;
-                    if (data.shopping_list) shoppingList.value = data.shopping_list;
-                    if (data.expenses) expenses.value = data.expenses;
-                    saveLocalBackup();
-                }
+        const openEditHotelModal = (hotelObj) => {
+            modalType.value = 'hotel'; isEditMode.value = true; currentTargetEventId = hotelObj.id;
+            modalData.value = { ...hotelObj }; showModal.value = true;
+        };
 
-                if (cloudChannel) supabaseClient.removeChannel(cloudChannel);
-                
-                cloudChannel = supabaseClient
-                    .channel('db-changes')
-                    .on('postgres_changes', { 
-                        event: '*', 
-                        schema: 'public', 
-                        table: 'trips', 
-                        filter: `room_id=eq.${FIXED_ROOM_ID}` 
-                    }, (payload) => {
-                        if (payload.new) {
-                            if (payload.new.events) events.value = payload.new.events;
-                            if (payload.new.shopping_list) shoppingList.value = payload.new.shopping_list;
-                            if (payload.new.expenses) expenses.value = payload.new.expenses;
-                            saveLocalBackup();
-                        }
-                    })
-                    .subscribe();
+        const saveHotelItem = () => {
+            if (!modalData.value.city || !modalData.value.name) { alert('請填寫城市與飯店名稱！'); return; }
+            if (isEditMode.value) {
+                const idx = hotelList.value.findIndex(h => h.id === currentTargetEventId);
+                if (idx !== -1) hotelList.value[idx] = { ...modalData.value };
+            } else {
+                modalData.value.id = Date.now();
+                hotelList.value.push({ ...modalData.value });
+            }
+            updateCloud(); closeModal();
+        };
 
-                isSynced.value = true;
-            } catch (err) {
-                console.error("雲端連線失敗", err);
-                isSynced.value = false;
-                loadLocalBackup();
+        const deleteHotelItem = (id) => { if (confirm("確定要刪除這筆住宿嗎？")) { hotelList.value = hotelList.value.filter(h => h.id !== id); updateCloud(); } };
+        
+        const openAddCarModal = () => {
+            modalType.value = 'car'; isEditMode.value = false;
+            modalData.value = { city: '', company: '', carModel: '', carPlate: '', pickupTime: '', dropoffTime: '', pickupLocation: '', bookingRef: '', note: '' };
+            showModal.value = true;
+        };
+
+        const openEditCarModal = (carObj) => {
+            modalType.value = 'car'; isEditMode.value = true; currentTargetEventId = carObj.id;
+            modalData.value = { ...carObj }; showModal.value = true;
+        };
+
+        const saveCarItem = () => {
+            if (!modalData.value.company) { alert('請填寫租車公司名稱！'); return; }
+            if (isEditMode.value) {
+                const idx = carList.value.findIndex(c => c.id === currentTargetEventId);
+                if (idx !== -1) carList.value[idx] = { ...modalData.value };
+            } else {
+                modalData.value.id = Date.now();
+                carList.value.push({ ...modalData.value });
+            }
+            updateCloud(); closeModal();
+        };
+
+        const deleteCarItem = (id) => { if (confirm("確定要刪除這筆租車明細嗎？")) { carList.value = carList.value.filter(c => c.id !== id); updateCloud(); } };
+
+        const copyText = (text) => { navigator.clipboard.writeText(text); alert("📋 地址已成功複製至剪貼簿！"); };
+
+        const addNewDay = () => {
+            const currentLength = days.value.length;
+            const lastDayDate = new Date(days.value[currentLength - 1].dateStr);
+            lastDayDate.setDate(lastDayDate.getDate() + 1);
+            
+            const year = lastDayDate.getFullYear();
+            const month = String(lastDayDate.getMonth() + 1).padStart(2, '0');
+            const date = String(lastDayDate.getDate()).padStart(2, '0');
+            const dateStr = `${year}-${month}-${date}`;
+            
+            const weeks = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+            const weekShort = weeks[lastDayDate.getDay()];
+            const dateNum = `${month}/${date}`;
+            const lastCity = days.value[currentLength - 1].city || 'melbourne';
+
+            days.value.push({ weekShort, dateNum, title: '自訂精采行程主題', dateStr, city: lastCity });
+            selectedDay.value = currentLength; 
+            updateCloud(); fetchAustraliaWeather();
+        };
+
+        const removeLastDay = () => {
+            if (days.value.length <= 1) return;
+            if (confirm(`確定要刪除最後一天 (Day ${days.value.length}) 嗎？`)) {
+                days.value.pop();
+                if (selectedDay.value >= days.value.length) selectedDay.value = days.value.length - 1;
+                updateCloud();
             }
         };
 
-        const updateCloud = async () => {
-            saveLocalBackup();
-            if (!isSynced.value || !supabaseClient) return;
+        const openDateSettings = () => { modalType.value = 'dateSettings'; showModal.value = true; };
+        const editDayTitle = () => { modalType.value = 'dayTitleEdit'; showModal.value = true; };
+
+        const recalculateDates = () => {
+            if (!tripStartDate.value) return;
+            const weeks = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+            days.value.forEach((day, index) => {
+                const currentDay = new Date(tripStartDate.value);
+                currentDay.setDate(currentDay.getDate() + index);
+                day.dateStr = `${currentDay.getFullYear()}-${String(currentDay.getMonth() + 1).padStart(2, '0')}-${String(currentDay.getDate()).padStart(2, '0')}`;
+                day.weekShort = weeks[currentDay.getDay()];
+                day.dateNum = `${String(currentDay.getMonth() + 1).padStart(2, '0')}/${String(currentDay.getDate()).padStart(2, '0')}`;
+            });
+            updateCloud(); fetchAustraliaWeather();
+        };
+
+        const fetchAustraliaWeather = async () => {
             try {
-                await supabaseClient.from('trips').update({ 
-                    events: events.value, 
-                    shopping_list: shoppingList.value, 
-                    expenses: expenses.value 
-                }).eq('room_id', FIXED_ROOM_ID);
-            } catch (e) { console.error(e); }
-        };
+                const currentDayObj = days.value[selectedDay.value];
+                if (!currentDayObj) return;
 
-        const saveLocalBackup = () => {
-            localStorage.setItem('trip_events', JSON.stringify(events.value));
-            localStorage.setItem('sh_list', JSON.stringify(shoppingList.value));
-            localStorage.setItem('ex_list', JSON.stringify(expenses.value));
-        };
+                let lat = -33.8688; let lon = 151.2093; 
+                const targetCity = currentDayObj.city || 'sydney';
+                if (targetCity === 'melbourne') { lat = -37.8136; lon = 144.9631; } 
+                else if (targetCity === 'uluru') { lat = -25.3444; lon = 131.0369; }
 
-        const loadLocalBackup = () => {
-            const localEvt = localStorage.getItem('trip_events');
-            const localShop = localStorage.getItem('sh_list');
-            const localExp = localStorage.getItem('ex_list');
-            if (localEvt) events.value = JSON.parse(localEvt);
-            if (localShop) shoppingList.value = JSON.parse(localShop);
-            if (localExp) expenses.value = JSON.parse(localExp);
-        };
-
-        const fetchTokyoWeatherForecast = async () => {
-            try {
-                const res = await fetch("https://api.open-meteo.com/v1/forecast?latitude=35.6895&longitude=139.6917&current=temperature_2m,weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&hourly=precipitation_probability&timezone=Asia%2FTokyo");
+                const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=Australia%2FSydney`);
                 const data = await res.json();
-                
                 if (data && data.daily) {
                     const db = {};
                     data.daily.time.forEach((dateStr, index) => {
                         const code = data.daily.weather_code[index];
-                        const maxTemp = Math.round(data.daily.temperature_2m_max[index]);
-                        const minTemp = Math.round(data.daily.temperature_2m_min[index]);
-                        const pop = data.daily.precipitation_probability_max[index];
-                        
-                        let desc = "多雲時晴"; let icon = "⛅"; let badgeClass = "bg-amber-500";
-                        if (code === 0) { desc = "晴朗無雲"; icon = "☀️"; badgeClass = "bg-orange-500"; }
-                        else if (code >= 1 && code <= 3) { desc = "晴間多雲"; icon = "🌤️"; badgeClass = "bg-sky-500"; }
-                        else if (code >= 45 && code <= 48) { desc = "大霧籠罩"; icon = "🌫️"; badgeClass = "bg-slate-500"; }
-                        else if (code >= 51 && code <= 67) { desc = "有雨偏涼"; icon = "🌧️"; badgeClass = "bg-rose-500"; }
-                        else if (code >= 71 && code <= 77) { desc = "有雪注意"; icon = "❄️"; badgeClass = "bg-indigo-400"; }
-                        else if (code >= 80 && code <= 82) { desc = "短暫陣雨"; icon = "🌦️"; badgeClass = "bg-violet-500"; }
-
                         db[dateStr] = {
-                            typeTitle: '📅 預報模式',
-                            badgeClass: badgeClass,
-                            icon: icon,
-                            desc: `當天預計${desc}，出門記得確認穿搭！`,
-                            tempInfo: `${minTemp}°C ~ ${maxTemp}°C`,
-                            pop: pop
+                            typeTitle: targetCity === 'sydney' ? '🌿 悉尼即時預報' : targetCity === 'uluru' ? '🏜️ 烏魯魯即時預報' : '🎨 墨爾本即時預報',
+                            badgeClass: code === 0 ? "bg-orange-500" : code <= 3 ? "bg-sky-500" : "bg-rose-500",
+                            icon: code === 0 ? "☀️" : code <= 3 ? "🌤️" : "🌧️",
+                            desc: `當地預計${code === 0 ? '晴朗' : code <= 3 ? '多雲時晴' : '局部有雨'}，祝探索順利！`,
+                            tempInfo: `${Math.round(data.daily.temperature_2m_min[index])}°C ~ ${Math.round(data.daily.temperature_2m_max[index])}°C`,
+                            pop: data.daily.precipitation_probability_max[index]
                         };
                     });
-
-                    if (data.current) {
-                        const todayStr = new Date().toISOString().split('T')[0];
-                        const currentTemp = Math.round(data.current.temperature_2m);
-                        const code = data.current.weather_code;
-                        const currentHour = new Date().getHours();
-                        const currentPop = data.hourly ? data.hourly.precipitation_probability[currentHour] : 0;
-                        
-                        let desc = "多雲時晴"; let icon = "⛅"; let badgeClass = "bg-amber-500";
-                        if (code === 0) { desc = "晴朗無雲"; icon = "☀️"; badgeClass = "bg-orange-500"; }
-                        else if (code >= 1 && code <= 3) { desc = "晴間多雲"; icon = "🌤️"; badgeClass = "bg-sky-500"; }
-                        else if (code >= 45 && code <= 48) { desc = "大霧"; icon = "🌫️"; badgeClass = "bg-slate-500"; }
-                        else if (code >= 51 && code <= 67) { desc = "正在下雨"; icon = "🌧️"; badgeClass = "bg-rose-500"; }
-                        else if (code >= 71 && code <= 77) { desc = "正在下雪"; icon = "❄️"; badgeClass = "bg-indigo-400"; }
-                        else if (code >= 80 && code <= 82) { desc = "陣雨來襲"; icon = "🌦️"; badgeClass = "bg-violet-500"; }
-
-                        db[todayStr] = {
-                            typeTitle: '🇯🇵 現場即時',
-                            badgeClass: badgeClass,
-                            icon: icon,
-                            desc: `目前東京正值${desc}，多機連線運作中！`,
-                            tempInfo: `${currentTemp}°C`,
-                            pop: currentPop
-                        };
-                    }
                     weatherDatabase.value = db;
                 }
-            } catch (err) {
-                console.error("預報資料讀取失敗:", err);
-            }
+            } catch (err) { console.error(err); }
         };
 
         const activeWeather = computed(() => {
-            const targetDayObj = days[selectedDay.value];
-            if (!targetDayObj) return { typeTitle: '⏳ 載入中', badgeClass: 'bg-slate-400', icon: '⏳', desc: '正在準備資料...', tempInfo: '--°C', pop: null };
-            
-            const targetDateStr = targetDayObj.dateStr;
-            if (weatherDatabase.value && weatherDatabase.value[targetDateStr]) {
-                return weatherDatabase.value[targetDateStr];
-            }
-            
-            const month = parseInt(targetDateStr.split('-')[1]);
-            if (month >= 6 && month <= 8) {
-                return {
-                    typeTitle: '🌸 當季天氣預測', badgeClass: 'bg-emerald-500', icon: '🌿',
-                    desc: '東京初夏梅雨交替期，常有短暫陣雨，建議攜帶輕便摺疊傘！', tempInfo: '20°C ~ 26°C', pop: 45
-                };
-            } else if (month >= 9 && month <= 11) {
-                return {
-                    typeTitle: '🍁 當季天氣預測', badgeClass: 'bg-orange-500', icon: '🍁',
-                    desc: '東京秋高氣爽，氣候非常舒適乾燥，適合戶外逛街健行！', tempInfo: '15°C ~ 22°C', pop: 25
-                };
-            } else if (month === 12 || month === 1 || month === 2) {
-                return {
-                    typeTitle: '❄️ 當季天氣預測', badgeClass: 'bg-sky-600', icon: '❄️',
-                    desc: '東京冬季寒冷乾燥、晴天率高，出門請加強防風羽絨外套保暖！', tempInfo: '3°C ~ 10°C', pop: 10
-                };
-            } else {
-                return {
-                    typeTitle: '🌸 當季天氣預測', badgeClass: 'bg-pink-400', icon: '🌸',
-                    desc: '東京春暖花開櫻花季，日夜溫差較大，建議採用洋蔥式穿搭法！', tempInfo: '10°C ~ 18°C', pop: 35
-                };
-            }
+            const targetDayObj = days.value[selectedDay.value];
+            if (!targetDayObj) return { typeTitle: '⏳ 載入中', badgeClass: 'bg-slate-400', icon: '⏳', desc: '準備中...', tempInfo: '--°C', pop: null };
+            if (weatherDatabase.value && weatherDatabase.value[targetDayObj.dateStr]) return weatherDatabase.value[targetDayObj.dateStr];
+            const targetCity = targetDayObj.city || 'sydney';
+            if (targetCity === 'melbourne') return { typeTitle: '🌿 墨爾本 11月氣候預測', badgeClass: 'bg-emerald-600', icon: '🎨', desc: '墨爾本春末溫差大，一日四季，建議攜帶輕便外套隨時洋蔥式穿搭。', tempInfo: '11°C ~ 22°C', pop: 25 };
+            if (targetCity === 'uluru') return { typeTitle: '🏜️ 烏魯魯 11月氣候預測', badgeClass: 'bg-amber-700', icon: '☀️', desc: '內陸紅土中心已進入初夏，白天強烈紫外線，請做好防曬！', tempInfo: '21°C ~ 34°C', pop: 10 };
+            return { typeTitle: '🌿 悉尼 11月氣候預測', badgeClass: 'bg-sky-600', icon: '🦘', desc: '雪梨正值春暖花開、氣候極為溫和舒適，非常適合漫步海港！', tempInfo: '16°C ~ 24°C', pop: 20 };
         });
 
-        const currentDayEvents = computed(() => events.value.filter(e => e.dayIdx === selectedDay.value));
-        const totalJPY = computed(() => expenses.value.reduce((sum, item) => sum + (item.amount || 0), 0));
-        const totalHKD = computed(() => totalJPY.value * exchangeRate.value);
-        const getPrevDayHotel = (day) => day === 0 ? null : "東京淺草橫綱Hotel";
+        watch(selectedDay, () => { fetchAustraliaWeather(); });
+
+        const connectToSupabase = async () => {
+            try {
+                supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                const { data } = await supabaseClient.from('trips').select('*').eq('room_id', FIXED_ROOM_ID).maybeSingle();
+                
+                if (data) {
+                    if (data.days_config && data.days_config.length >= days.value.length) {
+                        days.value = data.days_config;
+                    }
+
+                    if (data.events && data.events.length > 0) {
+                        const cloudEvents = data.events;
+                        const localNewEvents = events.value.filter(le => le.dayIdx >= 13);
+                        const hasNewDaysInCloud = cloudEvents.some(e => e.dayIdx >= 13);
+                        
+                        if (!hasNewDaysInCloud) {
+                            events.value = [...cloudEvents, ...localNewEvents];
+                        } else {
+                            events.value = cloudEvents;
+                        }
+                    } else {
+                        events.value = [...defaultEvents];
+                    }
+
+                    if (data.shopping_list) shoppingList.value = data.shopping_list;
+                    if (data.expenses) expenses.value = data.expenses;
+                    if (data.hotel_list) hotelList.value = data.hotel_list;
+                    if (data.car_list) carList.value = data.car_list;
+
+                    await updateCloud();
+                } else {
+                    await updateCloud();
+                }
+                isSynced.value = true; 
+                fetchAustraliaWeather();
+            } catch (err) { 
+                console.error("同步失敗:", err);
+                isSynced.value = false; 
+            }
+        };
+
+        const updateCloud = async () => {
+            localStorage.setItem('aus_trip_events', JSON.stringify(events.value));
+            localStorage.setItem('aus_trip_days', JSON.stringify(days.value));
+            localStorage.setItem('aus_trip_hotels', JSON.stringify(hotelList.value));
+            localStorage.setItem('aus_trip_cars', JSON.stringify(carList.value));
+            localStorage.setItem('aus_trip_shopping', JSON.stringify(shoppingList.value));
+            localStorage.setItem('aus_trip_expenses', JSON.stringify(expenses.value));
+
+            if (!isSynced.value || !supabaseClient) return;
+            try {
+                await supabaseClient.from('trips').upsert({ 
+                    room_id: FIXED_ROOM_ID, events: events.value, shopping_list: shoppingList.value, 
+                    expenses: expenses.value, days_config: days.value, hotel_list: hotelList.value, car_list: carList.value
+                });
+            } catch (e) { console.error(e); }
+        };
+
+        const loadLocalBackup = () => {
+            const localEvt = localStorage.getItem('aus_trip_events');
+            const localCfg = localStorage.getItem('aus_trip_days');
+            const localHtl = localStorage.getItem('aus_trip_hotels');
+            const localCar = localStorage.getItem('aus_trip_cars');
+            const localShop = localStorage.getItem('aus_trip_shopping');
+            const localExp = localStorage.getItem('aus_trip_expenses');
+
+            if (localEvt) events.value = JSON.parse(localEvt);
+            if (localCfg) days.value = JSON.parse(localCfg);
+            if (localHtl) hotelList.value = JSON.parse(localHtl);
+            if (localCar) carList.value = JSON.parse(localCar);
+            if (localShop) shoppingList.value = JSON.parse(localShop);
+            if (localExp) expenses.value = JSON.parse(localExp);
+        };
+
+        const currentDayEvents = computed(() => {
+            const day = days.value[selectedDay.value];
+            if (!day) return [];
+            const dayDate = day.dateStr;
+
+            const itineraryEvents = events.value.filter(e => e.dayIdx === selectedDay.value);
+            const activeHotels = hotelList.value.filter(h => {
+                return h.checkIn && h.checkOut && dayDate >= h.checkIn && dayDate <= h.checkOut;
+            });
+
+            const hotelEvents = activeHotels.map(h => {
+                let timeTag = '🏨 續住中';
+                if (dayDate === h.checkIn) timeTag = '🕒 Check-in';
+                else if (dayDate === h.checkOut) timeTag = '🕒 Check-out';
+
+                return {
+                    id: 'hotel-sync-' + h.id,
+                    category: '住宿',
+                    location: h.name,
+                    time: timeTag,
+                    note: `🛏️ 房型: ${h.roomType || '未填'}\n📄 確認碼: ${h.bookingRef || '無'}\n📍 地址: ${h.address || '無'}`,
+                    isHotelLink: true,
+                    rawHotel: h
+                };
+            });
+
+            return [...hotelEvents, ...itineraryEvents].sort((a, b) => a.time.localeCompare(b.time));
+        });
+
+        const totalAUD = computed(() => expenses.value.reduce((sum, item) => sum + (item.amount || 0), 0));
+        const totalHKD = computed(() => totalAUD.value * exchangeRate.value);
         
-        const triggerGoogleMap = (loc) => window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(loc)}`, '_blank');
+        const triggerGoogleMap = (loc) => window.open(`http://maps.google.com/?q=${encodeURIComponent(loc)}`, '_blank');
         const getCategoryClass = (cat) => ({ '景點':'bg-rose-100 text-rose-700','住宿':'bg-emerald-100 text-emerald-700','美食':'bg-amber-100 text-amber-700' }[cat] || 'bg-slate-100');
 
         const triggerFAB = () => {
@@ -582,21 +827,39 @@ createApp({
                 modalType.value = 'event'; isEditMode.value = false;
                 modalData.value = { category: '景點', time: '', location: '', note: '', transTime: '20', transMode: 'transit' };
             } else if (currentTab.value === 'shopping') {
-                modalType.value = 'shopping'; isEditMode.value = false; modalData.value = { name: '', image: null };
+                modalType.value = 'shopping'; isEditMode.value = false;
+                modalData.value = { name: '', image: '' };
             } else if (currentTab.value === 'wallet') {
-                modalType.value = 'wallet'; modalData.value = { category: '飲食', name: '', amount: null, date: new Date().toISOString().split('T')[0] };
+                modalType.value = 'wallet'; modalData.value = { category: '飲食', name: '', amount: null, date: days.value[selectedDay.value].dateStr };
             }
             showModal.value = true;
         };
 
-        // 擴充開窗功能：支援點選購物清單進入編輯
-        const openModal = (type, dataObj) => {
-            modalType.value = type; isEditMode.value = true; 
-            if (type === 'event') currentTargetEventId = dataObj.id;
-            modalData.value = { ...dataObj }; 
-            showModal.value = true;
+        // 購物清單高階操作：打開編輯視窗
+        const openEditShoppingModal = (shopObj) => {
+            modalType.value = 'shopping'; isEditMode.value = true; currentTargetEventId = shopObj.id;
+            modalData.value = { ...shopObj }; showModal.value = true;
         };
 
+        // 處理照片選取並轉成內嵌 Base64 編碼
+        const handleShoppingImageUpload = (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            // 限制一下圖片大小，避免過大（壓到約 800px 以內最佳，這裡做基礎編碼讀取）
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                modalData.value.image = event.target.result; // 將圖片 Base64 文字存入 modalData
+            };
+            reader.readAsDataURL(file);
+        };
+
+        // 全螢幕放大檢視控制
+        const zoomImage = (imgSrc) => {
+            zoomedImageSrc.value = imgSrc;
+        };
+
+        const openModal = (type, dataObj) => { modalType.value = type; isEditMode.value = true; currentTargetEventId = dataObj.id; modalData.value = { ...dataObj }; showModal.value = true; };
         const closeModal = () => { showModal.value = false; };
 
         const saveEvent = () => {
@@ -612,64 +875,54 @@ createApp({
             updateCloud(); closeModal();
         };
 
-        const deleteEvent = () => {
-            events.value = events.value.filter(e => e.id !== currentTargetEventId);
-            updateCloud(); closeModal();
-        };
-
-        // 購物清單儲存核心：支援「新增」與「修改」
-        const saveShoppingItem = () => {
-            if (!modalData.value.name) return;
+        const deleteEvent = () => { events.value = events.value.filter(e => e.id !== currentTargetEventId); updateCloud(); closeModal(); };
+        
+        // 升級優化後的儲存購物項
+        const saveShoppingItem = () => { 
+            if (!modalData.value.name) { alert('請輸入商品名稱！'); return; }
+            
             if (isEditMode.value) {
-                const idx = shoppingList.value.findIndex(s => s.id === modalData.value.id);
+                const idx = shoppingList.value.findIndex(s => s.id === currentTargetEventId);
                 if (idx !== -1) {
-                    shoppingList.value[idx] = { ...modalData.value };
+                    shoppingList.value[idx].name = modalData.value.name;
+                    shoppingList.value[idx].image = modalData.value.image || '';
                 }
             } else {
-                shoppingList.value.push({ id: Date.now(), name: modalData.value.name, image: modalData.value.image, checked: false });
+                shoppingList.value.push({ 
+                    id: Date.now(), 
+                    name: modalData.value.name, 
+                    checked: false,
+                    image: modalData.value.image || ''
+                }); 
             }
-            updateCloud(); closeModal();
+            updateCloud(); closeModal(); 
         };
 
-        const deleteShoppingItem = (id) => {
-            shoppingList.value = shoppingList.value.filter(s => s.id !== id);
-            updateCloud(); closeModal();
-        };
+        const deleteShoppingItem = (id) => { if(confirm("確定要刪除此購物項目嗎？")) { shoppingList.value = shoppingList.value.filter(s => s.id !== id); updateCloud(); } };
+        const saveExpenseItem = () => { if (!modalData.value.name || !modalData.value.amount) return; expenses.value.push({ id: Date.now(), category: modalData.value.category, name: modalData.value.name, amount: modalData.value.amount, date: modalData.value.date }); updateCloud(); closeModal(); };
+        const deleteExpenseItem = (id) => { expenses.value = expenses.value.filter(e => e.id !== id); updateCloud(); };
 
-        const handleImageUpload = (e) => {
-            const file = e.target.files[0]; if (!file) return;
-            const reader = new FileReader();
-            reader.onload = (event) => { modalData.value.image = event.target.result; };
-            reader.readAsDataURL(file);
-        };
+        onMounted(() => { 
+            loadLocalBackup(); 
+            fetchAustraliaWeather(); 
+            connectToSupabase(); 
 
-        const saveExpenseItem = () => {
-            if (!modalData.value.name || !modalData.value.amount) return;
-            expenses.value.push({ id: Date.now(), category: modalData.value.category, name: modalData.value.name, amount: modalData.value.amount, date: modalData.value.date });
-            updateCloud(); closeModal();
-        };
-
-        const deleteExpenseItem = (id) => {
-            expenses.value = expenses.value.filter(e => e.id !== id);
-            updateCloud();
-        };
-
-        const initDragDrop = () => {
-            const el = document.getElementById('drag-container');
-            if (el) { Sortable.create(el, { animation: 200, disabled: true }); }
-        };
-
-        onMounted(() => {
-            fetchTokyoWeatherForecast();
-            connectToSupabase();
-            nextTick(() => { initDragDrop(); });
+            document.addEventListener('visibilitychange', () => {
+                if (document.visibilityState === 'visible') {
+                    connectToSupabase();
+                }
+            });
         });
 
         return { 
-            currentTab, selectedDay, exchangeRate, calcInputJPY, tabs, days, activeWeather, 
-            currentDayEvents, shoppingList, expenses, totalJPY, totalHKD, triggerGoogleMap, getCategoryClass, getPrevDayHotel,
-            showModal, isEditMode, modalType, modalData, modalTitle, triggerFAB, openModal, closeModal, isSynced, updateCloud,
-            saveEvent, deleteEvent, saveShoppingItem, deleteShoppingItem, handleImageUpload, saveExpenseItem, deleteExpenseItem
+            currentTab, selectedDay, exchangeRate, calcInputAUD, tripStartDate, tabs, days, activeWeather, 
+            currentDayEvents, shoppingList, expenses, totalAUD, totalHKD, triggerGoogleMap, getCategoryClass, hotelList, carList,
+            showModal, isEditMode, modalType, modalData, modalTitle, triggerFAB, openModal, closeModal, isSynced,
+            addNewDay, removeLastDay, openDateSettings, recalculateDates, editDayTitle, updateCloud, 
+            openAddHotelModal, openEditHotelModal, saveHotelItem, deleteHotelItem, copyText,
+            openAddCarModal, openEditCarModal, saveCarItem, deleteCarItem,
+            saveEvent, deleteEvent, saveShoppingItem, deleteShoppingItem, saveExpenseItem, deleteExpenseItem, fetchAustraliaWeather,
+            openEditShoppingModal, handleShoppingImageUpload, zoomedImageSrc, zoomImage
         };
     }
 }).mount('#app');
