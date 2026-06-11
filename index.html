@@ -28,16 +28,6 @@
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; overflow-x: auto; scroll-behavior: smooth; -webkit-overflow-scrolling: touch; }
         .animate-fade-in { animation: fadeIn 0.4s ease-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-
-        /* 🌟 隱藏交通時間與記帳數字輸入框的原生上下微調箭頭 */
-        input::-webkit-outer-spin-button,
-        input::-webkit-inner-spin-button {
-            -webkit-appearance: none;
-            margin: 0;
-        }
-        input[type=number] {
-            -moz-appearance: textfield;
-        }
     </style>
 </head>
 <body class="text-slate-700 antialiased">
@@ -189,17 +179,20 @@
             <div v-if="shoppingList.length === 0" class="text-center text-xs text-slate-400 py-12">
                 🧺 購物清單空空如也，快點右下角「＋」加入戰利品目標！
             </div>
-            <div v-for="shop in shoppingList" :key="shop.id" class="bg-white/90 p-4 rounded-2xl border border-rose-50 shadow-sm flex justify-between items-center">
-                <div class="flex items-center gap-3 flex-1 min-w-0">
-                    <button @click="shop.checked = !shop.checked; updateCloud();" class="text-xl focus:outline-none">
+            <div v-for="shop in shoppingList" :key="shop.id" @click="openModal('shopping', shop)" class="bg-white/90 p-4 rounded-2xl border border-rose-50 shadow-sm flex justify-between items-center cursor-pointer hover:shadow-md transition-all">
+                <div class="flex items-center gap-3">
+                    <button @click.stop="shop.checked = !shop.checked; updateCloud();" class="text-xl focus:outline-none">
                         {{ shop.checked ? '⭐' : '☆' }}
                     </button>
-                    <div v-if="shop.image" @click="openImagePreview(shop.image)" class="w-12 h-12 rounded-lg overflow-hidden border border-slate-100 bg-slate-50 flex-shrink-0 cursor-pointer active:opacity-70 transition-opacity">
+                    <div v-if="shop.image" class="w-12 h-12 rounded-lg overflow-hidden border border-slate-100 bg-slate-50 flex-shrink-0">
                         <img :src="shop.image" class="w-full h-full object-cover">
                     </div>
-                    <span class="font-bold text-sm truncate" :class="shop.checked ? 'line-through text-slate-400' : 'text-slate-700'">{{ shop.name }}</span>
+                    <div>
+                        <span class="font-bold text-sm block" :class="shop.checked ? 'line-through text-slate-400' : 'text-slate-700'">{{ shop.name }}</span>
+                        <span class="text-[10px] text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded font-medium mt-1 inline-block">📝 點擊可編輯修改</span>
+                    </div>
                 </div>
-                <button @click="deleteShoppingItem(shop.id)" class="text-slate-300 hover:text-rose-500 text-xs px-2 py-1 flex-shrink-0">✕</button>
+                <button @click.stop="deleteShoppingItem(shop.id)" class="text-slate-300 hover:text-rose-500 text-xs px-2 py-1">✕</button>
             </div>
         </div>
 
@@ -302,10 +295,19 @@
                     <input type="text" v-model="modalData.name" placeholder="例如：Chiikawa 吊飾" class="w-full p-2.5 bg-slate-50 border rounded-xl font-bold">
                 </div>
                 <div>
-                    <label class="block text-xs font-bold text-slate-500 mb-1">上傳商品相片 (可選)</label>
+                    <label class="block text-xs font-bold text-slate-500 mb-1">商品相片</label>
+                    <div v-if="modalData.image" class="mb-2 flex items-center gap-3 bg-slate-50 p-2 rounded-xl border">
+                        <img :src="modalData.image" class="w-16 h-16 object-cover rounded-lg border">
+                        <button @click="modalData.image = null" class="text-xs bg-rose-50 text-rose-600 border border-rose-200 px-2 py-1 rounded-md font-bold">移除圖片</button>
+                    </div>
                     <input type="file" accept="image/*" @change="handleImageUpload" class="w-full text-xs text-slate-500 file:mr-3 file:py-2 file:px-3 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-sky-50 file:text-sky-700 hover:file:bg-sky-100">
                 </div>
-                <button @click="saveShoppingItem" class="w-full bg-sky-950 text-amber-100 py-3 rounded-xl font-bold mt-2 shadow-md">🧺 加入購物清單</button>
+                <div class="flex gap-2 pt-2">
+                    <button v-if="isEditMode" @click="deleteShoppingItem(modalData.id)" class="flex-1 bg-rose-50 text-rose-600 border border-rose-200 py-3 rounded-xl font-bold">🗑️ 刪除</button>
+                    <button @click="saveShoppingItem" class="flex-[2] bg-sky-950 text-amber-100 py-3 rounded-xl font-bold shadow-md">
+                        {{ isEditMode ? '💾 儲存修改' : '🧺 加入購物清單' }}
+                    </button>
+                </div>
             </div>
 
             <div v-if="modalType === 'wallet'" class="space-y-3 text-sm">
@@ -329,25 +331,6 @@
                 </div>
                 <button @click="saveExpenseItem" class="w-full bg-sky-950 text-amber-100 py-3 rounded-xl font-bold mt-2 shadow-md">💰 儲存此筆消費</button>
             </div>
-        </div>
-    </div>
-
-    <div v-if="previewImageUrl" class="fixed inset-0 bg-black/95 z-[100] flex flex-col items-center justify-center select-none overflow-hidden touch-none animate-fade-in"
-         @click="closeImagePreview"
-         @touchstart="handleTouchStart"
-         @touchmove="handleTouchMove"
-         @touchend="handleTouchEnd">
-        
-        <button @click.stop="closeImagePreview" class="absolute top-6 right-6 w-10 h-10 bg-white/20 backdrop-blur-md rounded-full text-white font-bold text-xl flex items-center justify-center z-[110] active:scale-90 transition-transform">✕</button>
-        
-        <div class="w-full h-full flex items-center justify-center transition-transform duration-100 ease-out"
-             :style="{ transform: `scale(${imgScale}) translate(${imgPanX}px, ${imgPanY}px)` }"
-             @dblclick.stop="handleDoubleTap">
-            <img :src="previewImageUrl" class="max-w-full max-h-full object-contain pointer-events-none rounded-sm shadow-2xl">
-        </div>
-
-        <div class="absolute bottom-6 left-1/2 -translate-x-1/2 text-[11px] font-bold tracking-wide text-white/50 bg-black/40 px-4 py-1.5 rounded-full pointer-events-none text-center">
-            💡 支援雙指捏合放大縮小 / 雙擊直接放大
         </div>
     </div>
 
@@ -409,119 +392,29 @@ createApp({
         const shoppingList = ref([]);
         const expenses = ref([]);
 
-        // 🌟 圖片手勢縮放互動狀態狀態
-        const previewImageUrl = ref('');
-        const imgScale = ref(1);
-        const imgPanX = ref(0);
-        const imgPanY = ref(0);
-        let startTouchDistance = 0;
-        let startScale = 1;
-        let lastTouchTime = 0;
-        let startTouchX = 0;
-        let startTouchY = 0;
-        let startPanX = 0;
-        let startPanY = 0;
-
         const showModal = ref(false); const isEditMode = ref(false); const modalType = ref(''); const modalData = ref({}); let currentTargetEventId = null;
 
+        // 動態計算彈窗標題
         const modalTitle = computed(() => {
-            if (modalType.value === 'shopping') return '🧺 新增採購目標商品';
+            if (modalType.value === 'shopping') {
+                return isEditMode.value ? '📝 編輯修改採購商品' : '🧺 新增採購目標商品';
+            }
             if (modalType.value === 'wallet') return '💰 新增消費記帳';
             return isEditMode.value ? '📝 編輯行程項目' : '✨ 新增行程項目';
         });
-
-        // 🌟 打開圖片放大預覽視窗
-        const openImagePreview = (imgUrl) => {
-            previewImageUrl.value = imgUrl;
-            imgScale.value = 1;
-            imgPanX.value = 0;
-            imgPanY.value = 0;
-        };
-
-        // 🌟 關閉圖片預覽
-        const closeImagePreview = () => {
-            previewImageUrl.value = '';
-        };
-
-        // 🌟 雙擊圖片時的切換行為（無放大時放大至2倍，有放大時歸位）
-        const handleDoubleTap = () => {
-            if (imgScale.value > 1) {
-                imgScale.value = 1;
-                imgPanX.value = 0;
-                imgPanY.value = 0;
-            } else {
-                imgScale.value = 2.5;
-            }
-        };
-
-        // 🌟 手勢操作：Touch 觸碰開始
-        const handleTouchStart = (e) => {
-            if (e.touches.length === 1) {
-                // 單指滑動（拖曳移動圖片）
-                startTouchX = e.touches[0].clientX;
-                startTouchY = e.touches[0].clientY;
-                startPanX = imgPanX.value;
-                startPanY = imgPanY.value;
-            } else if (e.touches.length === 2) {
-                // 雙指捏合（多點觸控放大）
-                startTouchDistance = Math.hypot(
-                    e.touches[0].clientX - e.touches[1].clientX,
-                    e.touches[0].clientY - e.touches[1].clientY
-                );
-                startScale = imgScale.value;
-            }
-        };
-
-        // 🌟 手勢操作：Touch 滑動中
-        const handleTouchMove = (e) => {
-            if (e.touches.length === 1 && imgScale.value > 1) {
-                // 只有在放大狀態下才允許單指拖曳相片
-                const deltaX = e.touches[0].clientX - startTouchX;
-                const deltaY = e.touches[0].clientY - startTouchY;
-                imgPanX.value = startPanX + deltaX / imgScale.value;
-                imgPanY.value = startPanY + deltaY / imgScale.value;
-            } else if (e.touches.length === 2) {
-                // 雙指實時進行縮放計算
-                const currentDistance = Math.hypot(
-                    e.touches[0].clientX - e.touches[1].clientX,
-                    e.touches[0].clientY - e.touches[1].clientY
-                );
-                const factor = currentDistance / startTouchDistance;
-                let targetScale = startScale * factor;
-                // 限制安全範圍：最大 5 倍，最小 0.8 倍
-                if (targetScale < 0.8) targetScale = 0.8;
-                if (targetScale > 5) targetScale = 5;
-                imgScale.value = targetScale;
-            }
-        };
-
-        // 🌟 手勢操作：Touch 結束
-        const handleTouchEnd = (e) => {
-            if (e.touches.length === 0) {
-                // 如果縮太小，手放開後自動彈回原大小 1 
-                if (imgScale.value < 1) {
-                    imgScale.value = 1;
-                    imgPanX.value = 0;
-                    imgPanY.value = 0;
-                }
-            }
-        };
 
         const connectToSupabase = async () => {
             try {
                 supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
                 
-                const { data } = await supabaseClient
+                const { data, error } = await supabaseClient
                     .from('trips')
                     .select('*')
                     .eq('room_id', FIXED_ROOM_ID)
                     .maybeSingle();
 
                 if (data) {
-                    if (data.events) {
-                        events.value = data.events;
-                        localStorage.setItem('trip_events_sync', JSON.stringify(events.value));
-                    }
+                    if (data.events) events.value = data.events;
                     if (data.shopping_list) shoppingList.value = data.shopping_list;
                     if (data.expenses) expenses.value = data.expenses;
                     saveLocalBackup();
@@ -538,10 +431,7 @@ createApp({
                         filter: `room_id=eq.${FIXED_ROOM_ID}` 
                     }, (payload) => {
                         if (payload.new) {
-                            if (payload.new.events) {
-                                events.value = payload.new.events;
-                                localStorage.setItem('trip_events_sync', JSON.stringify(events.value));
-                            }
+                            if (payload.new.events) events.value = payload.new.events;
                             if (payload.new.shopping_list) shoppingList.value = payload.new.shopping_list;
                             if (payload.new.expenses) expenses.value = payload.new.expenses;
                             saveLocalBackup();
@@ -553,6 +443,7 @@ createApp({
             } catch (err) {
                 console.error("雲端連線失敗", err);
                 isSynced.value = false;
+                loadLocalBackup();
             }
         };
 
@@ -605,8 +496,12 @@ createApp({
                         else if (code >= 80 && code <= 82) { desc = "短暫陣雨"; icon = "🌦️"; badgeClass = "bg-violet-500"; }
 
                         db[dateStr] = {
-                            typeTitle: '📅 預報模式', badgeClass: badgeClass, icon: icon,
-                            desc: `當天預計${desc}，出門記得確認穿搭！`, tempInfo: `${minTemp}°C ~ ${maxTemp}°C`, pop: pop
+                            typeTitle: '📅 預報模式',
+                            badgeClass: badgeClass,
+                            icon: icon,
+                            desc: `當天預計${desc}，出門記得確認穿搭！`,
+                            tempInfo: `${minTemp}°C ~ ${maxTemp}°C`,
+                            pop: pop
                         };
                     });
 
@@ -626,8 +521,12 @@ createApp({
                         else if (code >= 80 && code <= 82) { desc = "陣雨來襲"; icon = "🌦️"; badgeClass = "bg-violet-500"; }
 
                         db[todayStr] = {
-                            typeTitle: '🇯🇵 現場即時', badgeClass: badgeClass, icon: icon,
-                            desc: `目前東京正值${desc}，多機連線運作中！`, tempInfo: `${currentTemp}°C`, pop: currentPop
+                            typeTitle: '🇯🇵 現場即時',
+                            badgeClass: badgeClass,
+                            icon: icon,
+                            desc: `目前東京正值${desc}，多機連線運作中！`,
+                            tempInfo: `${currentTemp}°C`,
+                            pop: currentPop
                         };
                     }
                     weatherDatabase.value = db;
@@ -640,18 +539,33 @@ createApp({
         const activeWeather = computed(() => {
             const targetDayObj = days[selectedDay.value];
             if (!targetDayObj) return { typeTitle: '⏳ 載入中', badgeClass: 'bg-slate-400', icon: '⏳', desc: '正在準備資料...', tempInfo: '--°C', pop: null };
+            
             const targetDateStr = targetDayObj.dateStr;
-            if (weatherDatabase.value && weatherDatabase.value[targetDateStr]) return weatherDatabase.value[targetDateStr];
+            if (weatherDatabase.value && weatherDatabase.value[targetDateStr]) {
+                return weatherDatabase.value[targetDateStr];
+            }
             
             const month = parseInt(targetDateStr.split('-')[1]);
             if (month >= 6 && month <= 8) {
-                return { typeTitle: '🌸 當季天氣預測', badgeClass: 'bg-emerald-500', icon: '🌿', desc: '東京初夏梅雨交替期，常有短暫陣雨，建議攜帶輕便摺疊傘！', tempInfo: '20°C ~ 26°C', pop: 45 };
+                return {
+                    typeTitle: '🌸 當季天氣預測', badgeClass: 'bg-emerald-500', icon: '🌿',
+                    desc: '東京初夏梅雨交替期，常有短暫陣雨，建議攜帶輕便摺疊傘！', tempInfo: '20°C ~ 26°C', pop: 45
+                };
             } else if (month >= 9 && month <= 11) {
-                return { typeTitle: '🍁 當季天氣預測', badgeClass: 'bg-orange-500', icon: '🍁', desc: '東京秋高氣爽，氣候非常舒適乾燥，適合戶外逛街健行！', tempInfo: '15°C ~ 22°C', pop: 25 };
+                return {
+                    typeTitle: '🍁 當季天氣預測', badgeClass: 'bg-orange-500', icon: '🍁',
+                    desc: '東京秋高氣爽，氣候非常舒適乾燥，適合戶外逛街健行！', tempInfo: '15°C ~ 22°C', pop: 25
+                };
             } else if (month === 12 || month === 1 || month === 2) {
-                return { typeTitle: '❄️ 當季天氣預測', badgeClass: 'bg-sky-600', icon: '❄️', desc: '東京冬季寒冷乾燥、晴天率高，出門請加強防風羽絨外套保暖！', tempInfo: '3°C ~ 10°C', pop: 10 };
+                return {
+                    typeTitle: '❄️ 當季天氣預測', badgeClass: 'bg-sky-600', icon: '❄️',
+                    desc: '東京冬季寒冷乾燥、晴天率高，出門請加強防風羽絨外套保暖！', tempInfo: '3°C ~ 10°C', pop: 10
+                };
             } else {
-                return { typeTitle: '🌸 當季天氣預測', badgeClass: 'bg-pink-400', icon: '🌸', desc: '東京春暖花開櫻花季，日夜溫差較大，建議採用洋蔥式穿搭法！', tempInfo: '10°C ~ 18°C', pop: 35 };
+                return {
+                    typeTitle: '🌸 當季天氣預測', badgeClass: 'bg-pink-400', icon: '🌸',
+                    desc: '東京春暖花開櫻花季，日夜溫差較大，建議採用洋蔥式穿搭法！', tempInfo: '10°C ~ 18°C', pop: 35
+                };
             }
         });
 
@@ -668,16 +582,19 @@ createApp({
                 modalType.value = 'event'; isEditMode.value = false;
                 modalData.value = { category: '景點', time: '', location: '', note: '', transTime: '20', transMode: 'transit' };
             } else if (currentTab.value === 'shopping') {
-                modalType.value = 'shopping'; modalData.value = { name: '', image: null };
+                modalType.value = 'shopping'; isEditMode.value = false; modalData.value = { name: '', image: null };
             } else if (currentTab.value === 'wallet') {
                 modalType.value = 'wallet'; modalData.value = { category: '飲食', name: '', amount: null, date: new Date().toISOString().split('T')[0] };
             }
             showModal.value = true;
         };
 
+        // 擴充開窗功能：支援點選購物清單進入編輯
         const openModal = (type, dataObj) => {
-            modalType.value = type; isEditMode.value = true; currentTargetEventId = dataObj.id;
-            modalData.value = { ...dataObj }; showModal.value = true;
+            modalType.value = type; isEditMode.value = true; 
+            if (type === 'event') currentTargetEventId = dataObj.id;
+            modalData.value = { ...dataObj }; 
+            showModal.value = true;
         };
 
         const closeModal = () => { showModal.value = false; };
@@ -700,15 +617,23 @@ createApp({
             updateCloud(); closeModal();
         };
 
+        // 購物清單儲存核心：支援「新增」與「修改」
         const saveShoppingItem = () => {
             if (!modalData.value.name) return;
-            shoppingList.value.push({ id: Date.now(), name: modalData.value.name, image: modalData.value.image, checked: false });
+            if (isEditMode.value) {
+                const idx = shoppingList.value.findIndex(s => s.id === modalData.value.id);
+                if (idx !== -1) {
+                    shoppingList.value[idx] = { ...modalData.value };
+                }
+            } else {
+                shoppingList.value.push({ id: Date.now(), name: modalData.value.name, image: modalData.value.image, checked: false });
+            }
             updateCloud(); closeModal();
         };
 
         const deleteShoppingItem = (id) => {
             shoppingList.value = shoppingList.value.filter(s => s.id !== id);
-            updateCloud();
+            updateCloud(); closeModal();
         };
 
         const handleImageUpload = (e) => {
@@ -735,7 +660,6 @@ createApp({
         };
 
         onMounted(() => {
-            loadLocalBackup();
             fetchTokyoWeatherForecast();
             connectToSupabase();
             nextTick(() => { initDragDrop(); });
@@ -745,11 +669,7 @@ createApp({
             currentTab, selectedDay, exchangeRate, calcInputJPY, tabs, days, activeWeather, 
             currentDayEvents, shoppingList, expenses, totalJPY, totalHKD, triggerGoogleMap, getCategoryClass, getPrevDayHotel,
             showModal, isEditMode, modalType, modalData, modalTitle, triggerFAB, openModal, closeModal, isSynced, updateCloud,
-            saveEvent, deleteEvent, saveShoppingItem, deleteShoppingItem, handleImageUpload, saveExpenseItem, deleteExpenseItem,
-            
-            // 🌟 回傳縮放預覽控制
-            previewImageUrl, imgScale, imgPanX, imgPanY, openImagePreview, closeImagePreview,
-            handleTouchStart, handleTouchMove, handleTouchEnd, handleDoubleTap
+            saveEvent, deleteEvent, saveShoppingItem, deleteShoppingItem, handleImageUpload, saveExpenseItem, deleteExpenseItem
         };
     }
 }).mount('#app');
