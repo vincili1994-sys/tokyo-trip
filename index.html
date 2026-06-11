@@ -215,20 +215,28 @@
             </div>
             
             <div v-for="exp in expenses" :key="exp.id" class="bg-white/90 p-3.5 rounded-2xl border border-slate-100 shadow-sm flex justify-between items-center">
-                <div class="flex items-center gap-3">
-                    <span class="text-[10px] px-2 py-1 rounded bg-slate-100 font-bold text-slate-600">{{ exp.category }}</span>
+                <div class="flex items-center gap-2.5">
+                    <div class="flex flex-col gap-1 items-start">
+                        <span class="text-[10px] px-2 py-0.5 rounded bg-sky-50 border border-sky-100 font-bold text-sky-800 whitespace-nowrap">
+                            {{ exp.category }}
+                        </span>
+                        <span v-if="exp.payment" class="text-[9px] px-1.5 py-0.2 rounded bg-amber-50 border border-amber-100 font-medium text-amber-800 whitespace-nowrap">
+                            {{ exp.payment }}
+                        </span>
+                    </div>
                     <div>
                         <h4 class="text-sm font-bold text-slate-800">{{ exp.name }}</h4>
-                        <p class="text-[9px] text-slate-400">{{ exp.date }}</p>
+                        <p class="text-[9px] text-slate-400 font-mono">{{ exp.date }}</p>
                     </div>
                 </div>
                 <div class="text-right flex items-center gap-3">
                     <span class="text-sm font-bold text-slate-700">¥ {{ exp.amount.toLocaleString() }}</span>
-                    <button @click="deleteExpenseItem(exp.id)" class="text-slate-300 hover:text-rose-500 text-xs">✕</button>
+                    <button @click="deleteExpenseItem(exp.id)" class="text-slate-300 hover:text-rose-500 text-xs px-1">✕</button>
                 </div>
             </div>
         </div>
 
+    </main>
 
     <button v-if="currentTab !== 'info'" @click="triggerFAB" class="fixed bottom-24 right-6 w-14 h-14 bg-sky-900 text-amber-100 rounded-full text-3xl shadow-2xl flex items-center justify-center z-50 focus:outline-none hover:scale-105 transition-all">＋</button>
 
@@ -311,13 +319,26 @@
             <div v-if="modalType === 'wallet'" class="space-y-3 text-sm">
                 <div>
                     <label class="block text-xs font-bold text-slate-500 mb-1">花費類別</label>
-                    <select v-model="modalData.category" class="w-full p-2.5 bg-slate-50 border rounded-xl">
-                        <option>飲食</option><option>購物</option><option>交通</option><option>門票</option><option>其他</option>
+                    <select v-model="modalData.category" class="w-full p-2.5 bg-slate-50 border rounded-xl font-medium text-slate-700">
+                        <option value="🍴 飲食">🍴 飲食</option>
+                        <option value="🛍️ 購物">🛍️ 購物</option>
+                        <option value="🚌 交通">🚌 交通</option>
+                        <option value="🎫 門票">🎫 門票</option>
+                        <option value="🏨 住宿">🏨 住宿</option>
+                        <option value="✨ 其他">✨ 其他</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 mb-1">付款方式</label>
+                    <select v-model="modalData.payment" class="w-full p-2.5 bg-slate-50 border rounded-xl font-medium text-slate-700">
+                        <option value="💵 現金">💵 現金</option>
+                        <option value="💳 信用卡">💳 信用卡</option>
+                        <option value="📱 電子支付">📱 電子支付 / 交通卡</option>
                     </select>
                 </div>
                 <div>
                     <label class="block text-xs font-bold text-slate-500 mb-1">項目名稱</label>
-                    <input type="text" v-model="modalData.name" placeholder="例如：一蘭拉麵晚餐" class="w-full p-2.5 bg-slate-50 border rounded-xl font-bold">
+                    <input type="text" v-model="modalData.name" placeholder="例如：晴空塔敘敘苑燒肉" class="w-full p-2.5 bg-slate-50 border rounded-xl font-bold">
                 </div>
                 <div>
                     <label class="block text-xs font-bold text-slate-500 mb-1">金額 (日幣 JPY)</label>
@@ -335,11 +356,8 @@
     <div v-if="previewImageUrl" 
          class="fixed inset-0 bg-black/95 z-[100] flex items-center justify-center overflow-hidden touch-none"
          @click="closeImagePreview">
-        
         <button class="absolute top-6 right-6 text-white text-3xl font-light z-[110] bg-black/40 w-12 h-12 rounded-full flex items-center justify-center">✕</button>
-        
         <div class="absolute top-8 left-6 text-white/60 text-xs tracking-wider pointer-events-none">📱 支援雙指放大縮小與拖曳</div>
-
         <img :src="previewImageUrl" 
              class="max-w-full max-h-full object-contain transition-transform duration-75 select-none"
              :style="{ transform: `translate(${imgX}px, ${imgY}px) scale(${imgScale})` }"
@@ -409,17 +427,8 @@ createApp({
 
         const showModal = ref(false); const isEditMode = ref(false); const modalType = ref(''); const modalData = ref({}); let currentTargetEventId = null;
 
-        // 🖼️ 圖片全螢幕手勢核心變數
-        const previewImageUrl = ref(null);
-        const imgScale = ref(1);
-        const imgX = ref(0);
-        const imgY = ref(0);
-        
-        let startTouchesDist = 0;
-        let startScale = 1;
-        let startX = 0;
-        let startY = 0;
-        let isDragging = false;
+        const previewImageUrl = ref(null); const imgScale = ref(1); const imgX = ref(0); const imgY = ref(0);
+        let startTouchesDist = 0; let startScale = 1; let startX = 0; let startY = 0; let isDragging = false;
 
         const modalTitle = computed(() => {
             if (modalType.value === 'shopping') return isEditMode.value ? '📝 編輯修改採購商品' : '🧺 新增採購目標商品';
@@ -427,58 +436,38 @@ createApp({
             return isEditMode.value ? '📝 編輯行程項目' : '✨ 新增行程項目';
         });
 
-        // 📸 圖片預報放大縮小邏輯
-        const openImagePreview = (url) => {
-            previewImageUrl.value = url;
-            imgScale.value = 1;
-            imgX.value = 0;
-            imgY.value = 0;
-        };
+        const openImagePreview = (url) => { previewImageUrl.value = url; imgScale.value = 1; imgX.value = 0; imgY.value = 0; };
         const closeImagePreview = () => { previewImageUrl.value = null; };
 
-        // 手機雙指觸控手勢演算
         const onTouchStart = (e) => {
             if (e.touches.length === 2) {
-                // 雙指放大模式
                 startTouchesDist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
                 startScale = imgScale.value;
             } else if (e.touches.length === 1) {
-                // 單指拖曳模式
-                isDragging = true;
-                startX = e.touches[0].clientX - imgX.value;
-                startY = e.touches[0].clientY - imgY.value;
+                isDragging = true; startX = e.touches[0].clientX - imgX.value; startY = e.touches[0].clientY - imgY.value;
             }
         };
 
         const onTouchMove = (e) => {
             if (e.touches.length === 2 && startTouchesDist > 0) {
                 const currentDist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
-                let factor = currentDist / startTouchesDist;
-                let targetScale = startScale * factor;
-                if (targetScale < 0.8) targetScale = 0.8;
-                if (targetScale > 5) targetScale = 5;
+                let factor = currentDist / startTouchesDist; let targetScale = startScale * factor;
+                if (targetScale < 0.8) targetScale = 0.8; if (targetScale > 5) targetScale = 5;
                 imgScale.value = targetScale;
             } else if (e.touches.length === 1 && isDragging) {
-                imgX.value = e.touches[0].clientX - startX;
-                imgY.value = e.touches[0].clientY - startY;
+                imgX.value = e.touches[0].clientX - startX; imgY.value = e.touches[0].clientY - startY;
             }
         };
 
         const onTouchEnd = (e) => {
             if (e.touches.length < 2) startTouchesDist = 0;
-            if (e.touches.length === 0) {
-                isDragging = false;
-                if (imgScale.value < 1) {
-                    // 若縮小過頭，放開手時自動彈回原始比例 1
-                    imgScale.value = 1; imgX.value = 0; imgY.value = 0;
-                }
-            }
+            if (e.touches.length === 0) { isDragging = false; if (imgScale.value < 1) { imgScale.value = 1; imgX.value = 0; imgY.value = 0; } }
         };
 
         const connectToSupabase = async () => {
             try {
                 supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-                const { data, error } = await supabaseClient.from('trips').select('*').eq('room_id', FIXED_ROOM_ID).maybeSingle();
+                const { data } = await supabaseClient.from('trips').select('*').eq('room_id', FIXED_ROOM_ID).maybeSingle();
                 if (data) {
                     if (data.events) events.value = data.events;
                     if (data.shopping_list) shoppingList.value = data.shopping_list;
@@ -495,17 +484,12 @@ createApp({
                     }
                 }).subscribe();
                 isSynced.value = true;
-            } catch (err) {
-                isSynced.value = false; loadLocalBackup();
-            }
+            } catch (err) { isSynced.value = false; loadLocalBackup(); }
         };
 
         const updateCloud = async () => {
-            saveLocalBackup();
-            if (!isSynced.value || !supabaseClient) return;
-            try {
-                await supabaseClient.from('trips').update({ events: events.value, shopping_list: shoppingList.value, expenses: expenses.value }).eq('room_id', FIXED_ROOM_ID);
-            } catch (e) { console.error(e); }
+            saveLocalBackup(); if (!isSynced.value || !supabaseClient) return;
+            try { await supabaseClient.from('trips').update({ events: events.value, shopping_list: shoppingList.value, expenses: expenses.value }).eq('room_id', FIXED_ROOM_ID); } catch (e) {}
         };
 
         const saveLocalBackup = () => {
@@ -560,14 +544,15 @@ createApp({
             } else if (currentTab.value === 'shopping') {
                 modalType.value = 'shopping'; isEditMode.value = false; modalData.value = { name: '', image: null };
             } else if (currentTab.value === 'wallet') {
-                modalType.value = 'wallet'; modalData.value = { category: '飲食', name: '', amount: null, date: new Date().toISOString().split('T')[0] };
+                modalType.value = 'wallet'; 
+                // 預設第一個有帶 Emoji 的值
+                modalData.value = { category: '🍴 飲食', payment: '💵 現金', name: '', amount: null, date: new Date().toISOString().split('T')[0] };
             }
             showModal.value = true;
         };
 
         const openModal = (type, dataObj) => {
-            modalType.value = type; isEditMode.value = true; 
-            if (type === 'event') currentTargetEventId = dataObj.id;
+            modalType.value = type; isEditMode.value = true; if (type === 'event') currentTargetEventId = dataObj.id;
             modalData.value = { ...dataObj }; showModal.value = true;
         };
 
@@ -607,7 +592,14 @@ createApp({
 
         const saveExpenseItem = () => {
             if (!modalData.value.name || !modalData.value.amount) return;
-            expenses.value.push({ id: Date.now(), category: modalData.value.category, name: modalData.value.name, amount: modalData.value.amount, date: modalData.value.date });
+            expenses.value.push({ 
+                id: Date.now(), 
+                category: modalData.value.category, 
+                payment: modalData.value.payment, // 儲存付款方式
+                name: modalData.value.name, 
+                amount: modalData.value.amount, 
+                date: modalData.value.date 
+            });
             updateCloud(); closeModal();
         };
 
