@@ -51,7 +51,7 @@
             <span class="text-amber-200 font-bold flex-shrink-0">🌐 雲端多機同步狀態：</span>
             <div class="flex items-center gap-1.5">
                 <span v-if="isSynced" class="text-emerald-400 font-bold animate-pulse">● 已自動連線</span>
-                <span v-else class="text-rose-400 font-bold">● 連線中...</span>
+                <span v-else class="text-rose-400 font-bold animate-bounce">● 同步中/喚醒雲端...</span>
             </div>
         </div>
 
@@ -464,16 +464,23 @@ createApp({
             if (e.touches.length === 0) { isDragging = false; if (imgScale.value < 1) { imgScale.value = 1; imgX.value = 0; imgY.value = 0; } }
         };
 
+        // 🌟 核心修正：加強重試與防斷線機制
         const connectToSupabase = async () => {
             try {
-                supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-                const { data } = await supabaseClient.from('trips').select('*').eq('room_id', FIXED_ROOM_ID).maybeSingle();
+                if (!supabaseClient) {
+                    supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                }
+                const { data, error } = await supabaseClient.from('trips').select('*').eq('room_id', FIXED_ROOM_ID).maybeSingle();
+                
+                if (error) throw error;
+
                 if (data) {
                     if (data.events) events.value = data.events;
                     if (data.shopping_list) shoppingList.value = data.shopping_list;
                     if (data.expenses) expenses.value = data.expenses;
                     saveLocalBackup();
                 }
+                
                 if (cloudChannel) supabaseClient.removeChannel(cloudChannel);
                 cloudChannel = supabaseClient.channel('db-changes').on('postgres_changes', { event: '*', schema: 'public', table: 'trips', filter: `room_id=eq.${FIXED_ROOM_ID}` }, (payload) => {
                     if (payload.new) {
@@ -483,8 +490,15 @@ createApp({
                         saveLocalBackup();
                     }
                 }).subscribe();
+                
                 isSynced.value = true;
-            } catch (err) { isSynced.value = false; loadLocalBackup(); }
+            } catch (err) {
+                console.log("Supabase 正在休眠或連線失敗，5秒後自動重試...", err);
+                isSynced.value = false; 
+                loadLocalBackup();
+                // 5秒後重新自動嘗試喚醒雲端
+                setTimeout(connectToSupabase, 5000);
+            }
         };
 
         const updateCloud = async () => {
@@ -534,7 +548,10 @@ createApp({
         const totalJPY = computed(() => expenses.value.reduce((sum, item) => sum + (item.amount || 0), 0));
         const totalHKD = computed(() => totalJPY.value * exchangeRate.value);
         const getPrevDayHotel = (day) => day === 0 ? null : "東京淺草橫綱Hotel";
+        
+        // 🌟 修正地圖導航網址拼接 Bug
         const triggerGoogleMap = (loc) => window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(loc)}`, '_blank');
+        
         const getCategoryClass = (cat) => ({ '景點':'bg-rose-100 text-rose-700','住宿':'bg-emerald-100 text-emerald-700','美食':'bg-amber-100 text-amber-700' }[cat] || 'bg-slate-100');
 
         const triggerFAB = () => {
@@ -545,7 +562,6 @@ createApp({
                 modalType.value = 'shopping'; isEditMode.value = false; modalData.value = { name: '', image: null };
             } else if (currentTab.value === 'wallet') {
                 modalType.value = 'wallet'; 
-                // 預設第一個有帶 Emoji 的值
                 modalData.value = { category: '🍴 飲食', payment: '💵 現金', name: '', amount: null, date: new Date().toISOString().split('T')[0] };
             }
             showModal.value = true;
@@ -595,7 +611,7 @@ createApp({
             expenses.value.push({ 
                 id: Date.now(), 
                 category: modalData.value.category, 
-                payment: modalData.value.payment, // 儲存付款方式
+                payment: modalData.value.payment, 
                 name: modalData.value.name, 
                 amount: modalData.value.amount, 
                 date: modalData.value.date 
