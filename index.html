@@ -187,7 +187,7 @@
                         <img :src="shop.image" class="w-full h-full object-cover">
                     </div>
                     <div>
-                        <span class="font-bold text-sm block" :class="shop.checked ? 'line-through text-slate-400' : 'text-slate-700'">{{ shop.name }}</span>
+                        <span class="font-bold text-sm block" :class="shop.checked ? 'line-through text-slate-400' : 'text-slate-400'">{{ shop.name }}</span>
                         <span class="text-[10px] text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded font-medium mt-1 inline-block">📝 點擊項目可編輯修改</span>
                     </div>
                 </div>
@@ -407,21 +407,8 @@ createApp({
             {id:'itinerary', name:'每日行程', icon:'📍'}, {id:'info', name:'旅遊資訊', icon:'ℹ️'},
             {id:'shopping', name:'購物清單', icon:'🧺'}, {id:'wallet', name:'花費紀錄', icon:'💰'}
         ];
-        
-        const defaultEvents = [
-            { id: 1, dayIdx: 0, category: '航班', location: '成田空港', time: '14:55', flightNum: 'HX608', flightDep: 'HKG', flightArr: 'NRT', flightArrTime: '20:10', flightDuration: '4h 15m', note: '抵達成田空港\n辦理入境提取行李。', transTime: '50', transMode: 'transit' },
-            { id: 2, dayIdx: 0, category: '住宿', location: '東京淺草橫綱Hotel', time: '21:30', note: '辦理入住手續', transTime: '15', transMode: 'walk' },
-            { id: 3, dayIdx: 0, category: '美食', location: '淺草附近拉麵/居酒屋', time: '22:00', note: '宵夜與放鬆', transTime: '0', transMode: 'walk' },
-            { id: 4, dayIdx: 1, category: '景點', location: '御殿場 Premium Outlets', time: '10:00', openTime: '10:00-20:00', note: '瘋狂購物行程！', transTime: '120', transMode: 'drive' },
-            { id: 5, dayIdx: 2, category: '美食', location: '築地場外市場', time: '08:30', note: '早餐享用海鮮丼與玉子燒', transTime: '30', transMode: 'transit' },
-            { id: 6, dayIdx: 2, category: '景點', location: '分頭活動 / 自由逛街', time: '13:00', note: '各自安排想去的景點', transTime: '40', transMode: 'transit' },
-            { id: 7, dayIdx: 3, category: '景點', location: '東京晴空塔 (SKYTREE)', time: '09:35', ticketPrice: '已預約 09:30 門票', note: '登高看東京全景', transTime: '30', transMode: 'transit' },
-            { id: 8, dayIdx: 3, category: '景點', location: '銀座 / 有樂町散策', time: '14:00', note: '逛街精品、無印良品旗艦店', transTime: '25', transMode: 'transit' },
-            { id: 9, dayIdx: 4, category: '景點', location: '淺草寺周邊最後巡禮', time: '09:00', note: '買手信、補貨', transTime: '60', transMode: 'transit' },
-            { id: 10, dayIdx: 4, category: '航班', location: '成田空港', time: '15:30', flightNum: 'HX609', flightDep: 'NRT', flightArr: 'HKG', flightArrTime: '21:00', flightDuration: '4h 30m', note: '起飛回港，結束美好旅程', transTime: '0', transMode: 'transit' }
-        ];
 
-        const events = ref([...defaultEvents]);
+        const events = ref([]);
         const shoppingList = ref([]);
         const expenses = ref([]);
 
@@ -464,24 +451,20 @@ createApp({
             if (e.touches.length === 0) { isDragging = false; if (imgScale.value < 1) { imgScale.value = 1; imgX.value = 0; imgY.value = 0; } }
         };
 
-        // 🛠️ 核心同步邏輯修正：採用「非同步並行監聽」架構，防止手機 WebSocket 通道載入卡死
         const connectToSupabase = async () => {
             try {
                 if (!supabaseClient) {
                     supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
                 }
 
-                // 先在背景發起資料請求，不阻塞 Realtime 的通道註冊
-                supabaseClient.from('trips').select('*').eq('room_id', FIXED_ROOM_ID).maybeSingle().then(({ data, error }) => {
-                    if (!error && data) {
-                        if (data.events) events.value = data.events;
-                        if (data.shopping_list) shoppingList.value = data.shopping_list;
-                        if (data.expenses) expenses.value = data.expenses;
-                        saveLocalBackup();
-                        // 只要成功拉到一次資料，即便 Socket 被擋，手機端也能正常顯示並完成點亮綠燈
-                        isSynced.value = true;
-                    }
-                });
+                const { data, error } = await supabaseClient.from('trips').select('*').eq('room_id', FIXED_ROOM_ID).maybeSingle();
+                if (!error && data) {
+                    if (data.events) events.value = data.events;
+                    if (data.shopping_list) shoppingList.value = data.shopping_list;
+                    if (data.expenses) expenses.value = data.expenses;
+                    saveLocalBackup();
+                    isSynced.value = true;
+                }
                 
                 if (cloudChannel) supabaseClient.removeChannel(cloudChannel);
                 
@@ -500,33 +483,37 @@ createApp({
                         }
                     })
                     .subscribe((status) => {
-                        // 監聽 Socket 通道訂閱狀態，一旦建立成功即點亮綠燈
-                        if (status === 'SUBSCRIBED' || status === 'CHANNEL_ERROR') {
+                        if (status === 'SUBSCRIBED') {
                             isSynced.value = true;
                         }
                     });
 
             } catch (err) {
-                console.log("連線發生異常，嘗試載入本地快取：", err);
+                console.log("連線發生異常：", err);
                 isSynced.value = false; 
                 loadLocalBackup();
                 setTimeout(connectToSupabase, 5000);
             }
         };
 
+        // 🛠️ 修正點一：深度解構 Vue Proxy 響應式變體，確保不夾帶任何 Vue 底層內部屬性送上雲端
         const updateCloud = async () => {
             saveLocalBackup(); 
             if (!supabaseClient) return;
             try { 
+                const cleanEvents = JSON.parse(JSON.stringify(events.value));
+                const cleanShopping = JSON.parse(JSON.stringify(shoppingList.value));
+                const cleanExpenses = JSON.parse(JSON.stringify(expenses.value));
+
                 await supabaseClient.from('trips').upsert({ 
                     room_id: FIXED_ROOM_ID,
-                    events: events.value, 
-                    shopping_list: shoppingList.value, 
-                    expenses: expenses.value 
+                    events: cleanEvents, 
+                    shopping_list: cleanShopping, 
+                    expenses: cleanExpenses 
                 }, { onConflict: 'room_id' }); 
                 isSynced.value = true;
             } catch (e) {
-                console.error("雲端更新失敗: ", e);
+                console.error("雲端同步失敗: ", e);
             }
         };
 
@@ -540,7 +527,24 @@ createApp({
             const localEvt = localStorage.getItem('trip_events'); 
             const localShop = localStorage.getItem('sh_list'); 
             const localExp = localStorage.getItem('ex_list');
-            if (localEvt) events.value = JSON.parse(localEvt); 
+            
+            // 如果本地與雲端都沒有，初始化預設行程
+            if (localEvt) {
+                events.value = JSON.parse(localEvt);
+            } else {
+                events.value = [
+                    { id: 1, dayIdx: 0, category: '航班', location: '成田空港', time: '14:55', flightNum: 'HX608', flightDep: 'HKG', flightArr: 'NRT', flightArrTime: '20:10', flightDuration: '4h 15m', note: '抵達成田空港\n辦理入境提取行李。', transTime: '50', transMode: 'transit' },
+                    { id: 2, dayIdx: 0, category: '住宿', location: '東京淺草橫綱Hotel', time: '21:30', note: '辦理入住手續', transTime: '15', transMode: 'walk' },
+                    { id: 3, dayIdx: 0, category: '美食', location: '淺草附近拉麵/居酒屋', time: '22:00', note: '宵夜與放鬆', transTime: '0', transMode: 'walk' },
+                    { id: 4, dayIdx: 1, category: '景點', location: '御殿場 Premium Outlets', time: '10:00', openTime: '10:00-20:00', note: '瘋狂購物行程！', transTime: '120', transMode: 'drive' },
+                    { id: 5, dayIdx: 2, category: '美食', location: '築地場外市場', time: '08:30', note: '早餐享用海鮮丼與玉子燒', transTime: '30', transMode: 'transit' },
+                    { id: 6, dayIdx: 2, category: '景點', location: '分頭活動 / 自由逛街', time: '13:00', note: '各自安排想去的景點', transTime: '40', transMode: 'transit' },
+                    { id: 7, dayIdx: 3, category: '景點', location: '東京晴空塔 (SKYTREE)', time: '09:35', ticketPrice: '已預約 09:30 門票', note: '登高看東京全景', transTime: '30', transMode: 'transit' },
+                    { id: 8, dayIdx: 3, category: '景點', location: '銀座 / 有樂町散策', time: '14:00', note: '逛街精品、無印良品旗艦店', transTime: '25', transMode: 'transit' },
+                    { id: 9, dayIdx: 4, category: '景點', location: '淺草寺周邊最後巡禮', time: '09:00', note: '買手信、補貨', transTime: '60', transMode: 'transit' },
+                    { id: 10, dayIdx: 4, category: '航班', location: '成田空港', time: '15:30', flightNum: 'HX609', flightDep: 'NRT', flightArr: 'HKG', flightArrTime: '21:00', flightDuration: '4h 30m', note: '起飛回港，結束美好旅程', transTime: '0', transMode: 'transit' }
+                ];
+            }
             if (localShop) shoppingList.value = JSON.parse(localShop); 
             if (localExp) expenses.value = JSON.parse(localExp);
         };
@@ -575,12 +579,15 @@ createApp({
             return { typeTitle: '🌸 當季天氣預測', badgeClass: 'bg-emerald-500', icon: '🌿', desc: '東京初夏梅雨交替期，常有短暫陣雨，建議攜帶輕便摺疊傘！', tempInfo: '20°C ~ 26°C', pop: 45 };
         });
 
-        const currentDayEvents = computed(() => events.value.filter(e => e.dayIdx === selectedDay.value));
+        const currentDayEvents = computed(() => {
+            if (!events.value) return [];
+            return events.value.filter(e => e.dayIdx === selectedDay.value);
+        });
+        
         const totalJPY = computed(() => expenses.value.reduce((sum, item) => sum + (item.amount || 0), 0));
         const totalHKD = computed(() => totalJPY.value * exchangeRate.value);
         const getPrevDayHotel = (day) => day === 0 ? null : "東京淺草橫綱Hotel";
         
-        // 🗺️ 修正導航網址：改為標準通用外連格式，可在各類手機系統中穩定直接調用 Google Maps App
         const triggerGoogleMap = (loc) => {
             window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(loc)}`, '_blank');
         };
@@ -590,7 +597,7 @@ createApp({
         const triggerFAB = () => {
             if (currentTab.value === 'itinerary') {
                 modalType.value = 'event'; isEditMode.value = false;
-                modalData.value = { category: '景點', time: '', location: '', note: '', transTime: '20', transMode: 'transit' };
+                modalData.value = { category: '景點', time: '', location: '', note: '', transTime: '20', transMode: 'transit', dayIdx: selectedDay.value };
             } else if (currentTab.value === 'shopping') {
                 modalType.value = 'shopping'; isEditMode.value = false; modalData.value = { name: '', image: null };
             } else if (currentTab.value === 'wallet') {
@@ -607,6 +614,7 @@ createApp({
 
         const closeModal = () => { showModal.value = false; };
 
+        // 🛠️ 修正點二：手機端「新增全新行程」時，強制鎖定當前點擊的天數 (selectedDay) 並注入防卡死格式
         const saveEvent = () => {
             if (!modalData.value.location || !modalData.value.time) { alert('請填寫地點與時間！'); return; }
             if (isEditMode.value) {
@@ -614,22 +622,36 @@ createApp({
                 if (idx !== -1) events.value[idx] = { ...modalData.value };
             } else {
                 const newId = events.value.length ? Math.max(...events.value.map(e => e.id)) + 1 : 1;
-                events.value.push({ ...modalData.value, id: newId, dayIdx: selectedDay.value });
+                // 強制將行程歸入當前選擇的天數分頁
+                events.value.push({ 
+                    ...modalData.value, 
+                    id: newId, 
+                    dayIdx: selectedDay.value 
+                });
             }
-            events.value.sort((a, b) => a.time.localeCompare(b.time)); updateCloud(); closeModal();
+            events.value.sort((a, b) => a.time.localeCompare(b.time)); 
+            updateCloud(); 
+            closeModal();
         };
 
         const deleteEvent = () => { events.value = events.value.filter(e => e.id !== currentTargetEventId); updateCloud(); closeModal(); };
 
+        // 🛠️ 修正點三：購物清單新增與修改邏輯修正，防止響應式 proxy 無效丟失
         const saveShoppingItem = () => {
             if (!modalData.value.name) return;
             if (isEditMode.value) {
                 const idx = shoppingList.value.findIndex(s => s.id === modalData.value.id);
                 if (idx !== -1) shoppingList.value[idx] = { ...modalData.value };
             } else {
-                shoppingList.value.push({ id: Date.now(), name: modalData.value.name, image: modalData.value.image, checked: false });
+                shoppingList.value.push({ 
+                    id: Date.now(), 
+                    name: modalData.value.name, 
+                    image: modalData.value.image, 
+                    checked: false 
+                });
             }
-            updateCloud(); closeModal();
+            updateCloud(); 
+            closeModal();
         };
 
         const deleteShoppingItem = (id) => { shoppingList.value = shoppingList.value.filter(s => s.id !== id); updateCloud(); closeModal(); };
@@ -639,6 +661,7 @@ createApp({
             const reader = new FileReader(); reader.onload = (event) => { modalData.value.image = event.target.result; }; reader.readAsDataURL(file);
         };
 
+        // 🛠️ 修正點四：花費欄位強制轉為數字，避免傳送空字串或未定義格式導致 Supabase 報錯拒收
         const saveExpenseItem = () => {
             if (!modalData.value.name || !modalData.value.amount) return;
             expenses.value.push({ 
@@ -646,19 +669,17 @@ createApp({
                 category: modalData.value.category, 
                 payment: modalData.value.payment, 
                 name: modalData.value.name, 
-                amount: modalData.value.amount, 
+                amount: Number(modalData.value.amount), 
                 date: modalData.value.date 
             });
-            updateCloud(); closeModal();
+            updateCloud(); 
+            closeModal();
         };
 
         const deleteExpenseItem = (id) => { expenses.value = expenses.value.filter(e => e.id !== id); updateCloud(); };
 
         onMounted(() => {
-            // 【關鍵修正】一開啟網頁，立即載入本地備份（確保在任何安全政策下，手機端一打開都有畫面與基礎結構）
             loadLocalBackup();
-            
-            // 隨後並行獲取天氣與註冊雲端，不阻塞主要生命週期
             fetchTokyoWeatherForecast(); 
             connectToSupabase();
             
