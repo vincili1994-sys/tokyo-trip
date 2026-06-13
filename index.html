@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>東京私旅 - 行動同步隨身版</title>
+    <title>東京私旅 - 全端無縫同步版</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght=300;400;500;700&display=swap" rel="stylesheet">
@@ -46,10 +46,10 @@
         </div>
 
         <div @click="forceManualSync" class="flex items-center justify-between bg-sky-900/60 p-2 rounded-xl border border-sky-700 text-xs my-1 cursor-pointer active:bg-sky-900 transition-colors">
-            <span class="text-amber-200 font-bold flex-shrink-0">🌐 雲端同步狀態 (點擊手動重連)：</span>
+            <span class="text-amber-200 font-bold flex-shrink-0">🌐 雲端狀態 (點擊可手動重整)：</span>
             <div class="flex items-center gap-1.5">
                 <span v-if="isSynced" class="text-emerald-400 font-bold animate-pulse">● 已同步</span>
-                <span v-else class="text-rose-400 font-bold animate-bounce">● 連線中/請點擊重整</span>
+                <span v-else class="text-rose-400 font-bold animate-bounce">● 本地儲存/連接中</span>
             </div>
         </div>
 
@@ -174,7 +174,7 @@
             </div>
 
             <div v-for="shop in shoppingList" :key="shop.id" class="bg-white/90 p-3 rounded-2xl border border-rose-50 shadow-sm flex justify-between items-center transition-colors">
-                <div @click="toggleShopChecked(shop)" class="flex items-center gap-3 flex-1 sandbox-click-area cursor-pointer select-none min-w-0">
+                <div @click="toggleShopChecked(shop)" class="flex items-center gap-3 flex-1 cursor-pointer select-none min-w-0">
                     <span class="text-lg flex-shrink-0">
                         {{ shop.checked ? '⭐' : '☆' }}
                     </span>
@@ -185,7 +185,6 @@
 
                     <div class="min-w-0 flex-1">
                         <span class="font-bold text-sm block truncate" :class="shop.checked ? 'line-through text-slate-400' : 'text-slate-700'">{{ shop.name }}</span>
-                        <span v-if="shop.note" class="text-[11px] text-slate-400 block truncate mt-0.5">{{ shop.note }}</span>
                     </div>
                 </div>
                 
@@ -213,11 +212,11 @@
             <div class="bg-white/95 p-4 rounded-2xl border border-amber-200 shadow-sm space-y-3">
                 <h3 class="text-xs font-bold text-amber-900 flex items-center gap-1">➕ 現場即時記帳</h3>
                 <div class="grid grid-cols-2 gap-2 text-xs">
-                    <input type="text" v-model="quickExpense.name" placeholder="消費項目 (如: 拉麵)" class="p-2 border rounded-xl focus:outline-none bg-slate-50 font-bold">
-                    <input type="number" v-model.number="quickExpense.amount" placeholder="金額 JPY (如: 1200)" class="p-2 border rounded-xl focus:outline-none bg-slate-50 font-bold text-rose-600">
+                    <input type="text" v-model="quickExpense.name" placeholder="消費項目" class="p-2 border rounded-xl focus:outline-none bg-slate-50 font-bold">
+                    <input type="number" v-model.number="quickExpense.amount" placeholder="金額 JPY" class="p-2 border rounded-xl focus:outline-none bg-slate-50 font-bold text-rose-600">
                 </div>
                 <button @click="addQuickExpense" class="w-full py-2 bg-amber-400 text-sky-950 font-black text-xs rounded-xl shadow-sm active:bg-amber-500">
-                    ⚡ 記錄並同步至雲端
+                    ⚡ 記錄並同步
                 </button>
             </div>
             
@@ -246,7 +245,6 @@
 
     <div v-if="previewImageUrl" class="fixed inset-0 bg-black/95 z-[100] flex items-center justify-center p-4 animate-fade-in" @click="closeImagePreview">
         <img :src="previewImageUrl" class="max-w-full max-h-[85vh] object-contain rounded-xl shadow-2xl">
-        <div class="absolute bottom-6 left-1/2 -translate-x-1/2 text-white/60 text-xs tracking-wider bg-black/40 px-4 py-1.5 rounded-full backdrop-blur-md">點擊任意處關閉</div>
     </div>
 
 </div>
@@ -291,6 +289,19 @@ createApp({
         const shoppingList = ref([]);
         const expenses = ref([]);
 
+        // 本地緊急快取防丟機制
+        const saveToLocalStorage = () => {
+            localStorage.setItem('local_shopping', JSON.stringify(shoppingList.value));
+            localStorage.setItem('local_expenses', JSON.stringify(expenses.value));
+        };
+
+        const loadFromLocalStorage = () => {
+            const s = localStorage.getItem('local_shopping');
+            const e = localStorage.getItem('local_expenses');
+            if (s) shoppingList.value = JSON.parse(s);
+            if (e) expenses.value = JSON.parse(e);
+        };
+
         const fetchTokyoWeather = async () => {
             try {
                 const res = await fetch("https://api.open-meteo.com/v1/forecast?latitude=35.6895&longitude=139.6917&current=temperature_2m,weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&hourly=precipitation_probability&timezone=Asia%2FTokyo");
@@ -328,8 +339,9 @@ createApp({
                 .sort((a, b) => (a.time || '').localeCompare(b.time || ''));
         });
 
-        // 🛠️ 這裡使用了正確的反單引號，徹底修復崩潰 Bug
-        const triggerGoogleMap = (loc) => window.open(`http://maps.google.com/?q=$${encodeURIComponent(loc)}`, '_blank');
+        const triggerGoogleMap = (loc) => {
+            window.open("https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(loc), '_blank');
+        };
         
         const getCategoryClass = (cat) => {
             const classes = { '景點':'bg-rose-100 text-rose-700','住宿':'bg-emerald-100 text-emerald-70','美食':'bg-amber-100 text-amber-800','購物':'bg-indigo-100 text-indigo-700','航班':'bg-sky-100 text-sky-800' };
@@ -344,17 +356,20 @@ createApp({
                 const { data, error } = await supabaseClient.from('trips').select('*').eq('room_id', FIXED_ROOM_ID).maybeSingle();
                 if (data) {
                     events.value = data.events || [];
-                    shoppingList.value = data.shoppingList || [];
-                    expenses.value = data.expenses || [];
+                    // 如果雲端有新資料，則覆蓋本地
+                    if (data.shoppingList) shoppingList.value = data.shoppingList;
+                    if (data.expenses) expenses.value = data.expenses;
+                    saveToLocalStorage();
                 }
                 isSynced.value = true;
             } catch (err) {
-                console.error("雲端連線失敗:", err);
+                console.error("雲端讀取失敗，改用本地資料:", err);
                 isSynced.value = false;
             }
         };
 
         const updateCloud = async () => {
+            saveToLocalStorage();
             isSynced.value = false;
             try {
                 const payload = {
@@ -366,7 +381,7 @@ createApp({
                 await supabaseClient.from('trips').upsert(payload, { onConflict: 'room_id' });
                 isSynced.value = true;
             } catch (err) {
-                console.error("同步失敗:", err);
+                console.error("同步至雲端失敗，已安全儲存於本機裝置:", err);
             }
         };
 
@@ -381,12 +396,12 @@ createApp({
                 img.onload = () => {
                     const canvas = document.createElement('canvas');
                     const ctx = canvas.getContext('2d');
-                    const maxW = 500; 
+                    const maxW = 450; 
                     const scale = Math.min(maxW / img.width, 1);
                     canvas.width = img.width * scale;
                     canvas.height = img.height * scale;
                     ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-                    quickShopping.value.image = canvas.toDataURL('image/jpeg', 0.7);
+                    quickShopping.value.image = canvas.toDataURL('image/jpeg', 0.6);
                 };
                 img.src = event.target.result;
             };
@@ -443,13 +458,14 @@ createApp({
         const closeImagePreview = () => { previewImageUrl.value = null; };
 
         onMounted(() => {
+            loadFromLocalStorage(); // 優先開啟本地快取，杜絕白屏
             fetchTokyoWeather();
             connectToSupabase();
             
             document.addEventListener("visibilitychange", () => {
                 if (document.visibilityState === "visible") { connectToSupabase(); }
             });
-            setInterval(() => { connectToSupabase(); }, 8000);
+            setInterval(() => { connectToSupabase(); }, 9000);
         });
 
         return { 
