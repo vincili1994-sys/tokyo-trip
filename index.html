@@ -47,11 +47,10 @@
             </div>
         </div>
 
-        <!-- 狀態列優化：點擊可強制手動刷新同步 -->
         <div @click="forceManualSync" class="flex items-center justify-between bg-sky-900/60 p-2 rounded-xl border border-sky-700 text-xs my-1 cursor-pointer active:bg-sky-900 transition-colors">
             <span class="text-amber-200 font-bold flex-shrink-0">🌐 雲端狀態 (點擊強制重連)：</span>
             <div class="flex items-center gap-1.5">
-                <span v-if="isSynced" class="text-emerald-400 font-bold animate-pulse">● 已自動連線</span>
+                <span v-if="isSynced" class="text-emerald-400 font-bold animate-pulse">● 已同步</span>
                 <span v-else class="text-rose-400 font-bold animate-bounce">● 同步中/按此重新整理</span>
             </div>
         </div>
@@ -377,7 +376,7 @@
 </div>
 
 <script>
-const { createApp, ref, computed, onMounted, nextTick } = Vue;
+const { createApp, ref, computed, onMounted } = Vue;
 
 const SUPABASE_URL = "https://vumrenvgdbjeaiuvnuzx.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ1bXJlbnZnZGJqZWFpdXZudXp4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEwNTI4NDcsImV4cCI6MjA5NjYyODg0N30.Rn_WmoNaz1-PfHDznfJY0g_UU-kWs3UR4Wd5e2SchEo";
@@ -392,7 +391,6 @@ createApp({
         
         const isSynced = ref(false);
         let supabaseClient = null;
-        let cloudChannel = null;
 
         const weatherDatabase = ref({});
 
@@ -452,64 +450,35 @@ createApp({
             if (e.touches.length === 0) { isDragging = false; if (imgScale.value < 1) { imgScale.value = 1; imgX.value = 0; imgY.value = 0; } }
         };
 
-        // 核心修正：加強重連健壯度，主動清理舊的監聽
+        // Standard Mobile HTTP Sync Fallback Engine
         const connectToSupabase = async () => {
             try {
                 if (!supabaseClient) {
                     supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
                 }
 
-                // 優先拉取最新實時資料
-                const { data, error } = await supabaseClient.from('trips').select('*').eq('room_id', FIXED_ROOM_ID).maybeSingle();
-                if (!error && data) {
+                const { data, error } = await supabaseClient
+                    .from('trips')
+                    .select('*')
+                    .eq('room_id', FIXED_ROOM_ID)
+                    .maybeSingle();
+
+                if (error) throw error;
+
+                if (data) {
                     if (data.events) events.value = data.events;
                     if (data.shopping_list) shoppingList.value = data.shopping_list;
                     if (data.expenses) expenses.value = data.expenses;
                     saveLocalBackup();
-                    isSynced.value = true;
                 }
                 
-                // 清理舊的無效通道
-                if (cloudChannel) {
-                    try { supabaseClient.removeChannel(cloudChannel); } catch(ce){}
-                }
-                
-                // 重新綁定監聽
-                cloudChannel = supabaseClient.channel('db-changes')
-                    .on('postgres_changes', { 
-                        event: '*', 
-                        schema: 'public', 
-                        table: 'trips', 
-                        filter: `room_id=eq.${FIXED_ROOM_ID}` 
-                    }, (payload) => {
-                        if (payload.new) {
-                            if (payload.new.events) events.value = payload.new.events;
-                            if (payload.new.shopping_list) shoppingList.value = payload.new.shopping_list;
-                            if (payload.new.expenses) expenses.value = payload.new.expenses;
-                            saveLocalBackup();
-                            isSynced.value = true;
-                        }
-                    })
-                    .subscribe((status) => {
-                        if (status === 'SUBSCRIBED') {
-                            isSynced.value = true;
-                        } else if (status === 'CLOSED' || status === 'CHANNEL_ERROR') {
-                            isSynced.value = false;
-                        }
-                    });
+                isSynced.value = true;
 
             } catch (err) {
-                console.log("連線發生異常：", err);
+                console.error("Cloud engine sync failure, utilizing storage backup:", err);
                 isSynced.value = false; 
                 loadLocalBackup();
             }
-        };
-
-        // 手動點擊狀態列強制雙向深度同步
-        const forceManualSync = async () => {
-            isSynced.value = false;
-            await connectToSupabase();
-            await updateCloud();
         };
 
         const updateCloud = async () => {
@@ -527,15 +496,22 @@ createApp({
                     expenses: cleanExpenses 
                 }, { onConflict: 'room_id' }); 
                 
-                if(!error) {
+                if (!error) {
                     isSynced.value = true;
                 } else {
                     isSynced.value = false;
-                    console.error("資料庫拒絕寫入：", error);
+                    console.error("Database denied parameters:", error);
                 }
             } catch (e) {
                 isSynced.value = false;
+                console.error("Transmission error:", e);
             }
+        };
+
+        const forceManualSync = async () => {
+            isSynced.value = false;
+            await connectToSupabase();
+            await updateCloud();
         };
 
         const saveLocalBackup = () => {
@@ -594,7 +570,7 @@ createApp({
         const getPrevDayHotel = (day) => day === 0 ? null : "東京淺草橫綱Hotel";
         
         const triggerGoogleMap = (loc) => {
-            window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(loc)}`, '_blank');
+            window.open(`https://maps.google.com/?q=${encodeURIComponent(loc)}`, '_blank');
         };
         
         const getCategoryClass = (cat) => ({ '景點':'bg-rose-100 text-rose-700','住宿':'bg-emerald-100 text-emerald-700','美食':'bg-amber-100 text-amber-700' }[cat] || 'bg-slate-100');
@@ -675,19 +651,17 @@ createApp({
             fetchTokyoWeatherForecast(); 
             connectToSupabase();
             
-            // 特效：當使用者解鎖手機、重新打開網頁分頁時，立馬抓取最新進度
+            // Wakeup pull action
             document.addEventListener("visibilitychange", () => {
                 if (document.visibilityState === "visible") {
                     connectToSupabase();
                 }
             });
 
-            // 心跳機制：每 15 秒如果發現狀態還是未同步，自動做一次安全檢測與重連
+            // Standard light weight HTTP polling every 10 seconds
             setInterval(() => {
-                if (!isSynced.value) {
-                    connectToSupabase();
-                }
-            }, 15000);
+                connectToSupabase();
+            }, 10000);
 
             const el = document.getElementById('drag-container'); 
             if (el) { Sortable.create(el, { animation: 200, disabled: true }); }
