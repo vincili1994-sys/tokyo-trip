@@ -99,7 +99,7 @@
             <div id="drag-container" class="space-y-3 relative">
                 <div v-for="(event, idx) in currentDayEvents" :key="event.id" :data-id="event.id" class="relative">
                     
-                    <div v-if="idx > 0 || (selectedDay > 0 && getPrevDayHotel(selectedDay))" class="my-3 mx-4 flex items-center justify-between bg-white/80 backdrop-blur-sm px-4 py-2 rounded-xl border border-slate-200/60 text-xs text-slate-500">
+                    <div v-if="idx > 0 || (selectedDay > 0 && getPrevDayHotel(selectedDay))" class="my-3 mx-4 flex items-center justify-between bg-white/90 backdrop-blur-sm px-4 py-2 rounded-xl border border-slate-200/60 text-xs text-slate-500 shadow-sm">
                         <div class="flex items-center gap-1.5 font-medium">
                             <span v-if="event.transMode === 'walk'">🚶‍♂️ 步行</span>
                             <span v-else-if="event.transMode === 'drive'">🚗 開車</span>
@@ -107,9 +107,9 @@
                             <span>往目的地約 {{ event.transTime || '20' }} 分鐘</span>
                         </div>
                         <div class="flex gap-1 bg-slate-200/60 p-0.5 rounded-md">
-                            <button @click.stop="event.transMode = 'walk'; updateCloud();" :class="event.transMode === 'walk'?'bg-white font-bold':''" class="px-1 rounded">🚶‍♂️</button>
-                            <button @click.stop="event.transMode = 'drive'; updateCloud();" :class="event.transMode === 'drive'?'bg-white font-bold':''" class="px-1 rounded">🚗</button>
-                            <button @click.stop="event.transMode = 'transit'; updateCloud();" :class="event.transMode === 'transit' || !event.transMode?'bg-white font-bold':''" class="px-1 rounded">🚌</button>
+                            <button @click.stop="event.transMode = 'walk'; updateCloud();" :class="event.transMode === 'walk'?'bg-white font-bold shadow-sm':''" class="px-1.5 py-0.5 rounded transition-all text-xs">🚶‍♂️</button>
+                            <button @click.stop="event.transMode = 'drive'; updateCloud();" :class="event.transMode === 'drive'?'bg-white font-bold shadow-sm':''" class="px-1.5 py-0.5 rounded transition-all text-xs">🚗</button>
+                            <button @click.stop="event.transMode = 'transit'; updateCloud();" :class="event.transMode === 'transit' || !event.transMode?'bg-white font-bold shadow-sm':''" class="px-1.5 py-0.5 rounded transition-all text-xs">🚌</button>
                         </div>
                     </div>
 
@@ -188,7 +188,7 @@
                     </div>
                     <div>
                         <span class="font-bold text-sm block" :class="shop.checked ? 'line-through text-slate-400' : 'text-slate-700'">{{ shop.name }}</span>
-                        <span class="text-[10px] text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded font-medium mt-1 inline-block">📝 點擊文字可編輯修改</span>
+                        <span class="text-[10px] text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded font-medium mt-1 inline-block">📝 點擊項目可編輯修改</span>
                     </div>
                 </div>
                 <button @click.stop="deleteShoppingItem(shop.id)" class="text-slate-300 hover:text-rose-500 text-xs px-2 py-1">✕</button>
@@ -356,7 +356,7 @@
     <div v-if="previewImageUrl" 
          class="fixed inset-0 bg-black/95 z-[100] flex items-center justify-center overflow-hidden touch-none"
          @click="closeImagePreview">
-        <button class="absolute top-6 right-6 text-white text-3xl font-light z-[110] bg-black/40 w-12 h-12 rounded-full flex items-center justify-center">✕</button>
+         <button class="absolute top-6 right-6 text-white text-3xl font-light z-[110] bg-black/40 w-12 h-12 rounded-full flex items-center justify-center">✕</button>
         <div class="absolute top-8 left-6 text-white/60 text-xs tracking-wider pointer-events-none">📱 支援雙指放大縮小與拖曳</div>
         <img :src="previewImageUrl" 
              class="max-w-full max-h-full object-contain transition-transform duration-75 select-none"
@@ -464,7 +464,6 @@ createApp({
             if (e.touches.length === 0) { isDragging = false; if (imgScale.value < 1) { imgScale.value = 1; imgX.value = 0; imgY.value = 0; } }
         };
 
-        // 🌟 核心修正：加強重試與防斷線機制
         const connectToSupabase = async () => {
             try {
                 if (!supabaseClient) {
@@ -496,14 +495,24 @@ createApp({
                 console.log("Supabase 正在休眠或連線失敗，5秒後自動重試...", err);
                 isSynced.value = false; 
                 loadLocalBackup();
-                // 5秒後重新自動嘗試喚醒雲端
                 setTimeout(connectToSupabase, 5000);
             }
         };
 
+        // 🌟 修正核心：將原來的 update 改為更加穩定的 upsert 以解決手機無法更新雲端資料的問題
         const updateCloud = async () => {
-            saveLocalBackup(); if (!isSynced.value || !supabaseClient) return;
-            try { await supabaseClient.from('trips').update({ events: events.value, shopping_list: shoppingList.value, expenses: expenses.value }).eq('room_id', FIXED_ROOM_ID); } catch (e) {}
+            saveLocalBackup(); if (!supabaseClient) return;
+            try { 
+                await supabaseClient.from('trips').upsert({ 
+                    room_id: FIXED_ROOM_ID,
+                    events: events.value, 
+                    shopping_list: shoppingList.value, 
+                    expenses: expenses.value 
+                }, { onConflict: 'room_id' }); 
+                isSynced.value = true;
+            } catch (e) {
+                console.error("雲端更新失敗: ", e);
+            }
         };
 
         const saveLocalBackup = () => {
@@ -549,7 +558,7 @@ createApp({
         const totalHKD = computed(() => totalJPY.value * exchangeRate.value);
         const getPrevDayHotel = (day) => day === 0 ? null : "東京淺草橫綱Hotel";
         
-        // 🌟 修正地圖導航網址拼接 Bug
+        // 🌟 修正核心：移除了手誤的網址，改用最標準的 Google Maps 行動端外部搜尋連結，解決閃退與開啟失敗
         const triggerGoogleMap = (loc) => window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(loc)}`, '_blank');
         
         const getCategoryClass = (cat) => ({ '景點':'bg-rose-100 text-rose-700','住宿':'bg-emerald-100 text-emerald-700','美食':'bg-amber-100 text-amber-700' }[cat] || 'bg-slate-100');
