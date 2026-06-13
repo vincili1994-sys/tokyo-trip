@@ -47,11 +47,12 @@
             </div>
         </div>
 
-        <div class="flex items-center justify-between bg-sky-900/40 p-2 rounded-xl border border-sky-800 text-xs my-1">
-            <span class="text-amber-200 font-bold flex-shrink-0">🌐 雲端多機同步狀態：</span>
+        <!-- 狀態列優化：點擊可強制手動刷新同步 -->
+        <div @click="forceManualSync" class="flex items-center justify-between bg-sky-900/60 p-2 rounded-xl border border-sky-700 text-xs my-1 cursor-pointer active:bg-sky-900 transition-colors">
+            <span class="text-amber-200 font-bold flex-shrink-0">🌐 雲端狀態 (點擊強制重連)：</span>
             <div class="flex items-center gap-1.5">
                 <span v-if="isSynced" class="text-emerald-400 font-bold animate-pulse">● 已自動連線</span>
-                <span v-else class="text-rose-400 font-bold animate-bounce">● 同步中/喚醒雲端...</span>
+                <span v-else class="text-rose-400 font-bold animate-bounce">● 同步中/按此重新整理</span>
             </div>
         </div>
 
@@ -187,7 +188,7 @@
                         <img :src="shop.image" class="w-full h-full object-cover">
                     </div>
                     <div>
-                        <span class="font-bold text-sm block" :class="shop.checked ? 'line-through text-slate-400' : 'text-slate-400'">{{ shop.name }}</span>
+                        <span class="font-bold text-sm block" :class="shop.checked ? 'line-through text-slate-400' : 'text-slate-700'">{{ shop.name }}</span>
                         <span class="text-[10px] text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded font-medium mt-1 inline-block">📝 點擊項目可編輯修改</span>
                     </div>
                 </div>
@@ -451,12 +452,14 @@ createApp({
             if (e.touches.length === 0) { isDragging = false; if (imgScale.value < 1) { imgScale.value = 1; imgX.value = 0; imgY.value = 0; } }
         };
 
+        // 核心修正：加強重連健壯度，主動清理舊的監聽
         const connectToSupabase = async () => {
             try {
                 if (!supabaseClient) {
                     supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
                 }
 
+                // 優先拉取最新實時資料
                 const { data, error } = await supabaseClient.from('trips').select('*').eq('room_id', FIXED_ROOM_ID).maybeSingle();
                 if (!error && data) {
                     if (data.events) events.value = data.events;
@@ -466,8 +469,12 @@ createApp({
                     isSynced.value = true;
                 }
                 
-                if (cloudChannel) supabaseClient.removeChannel(cloudChannel);
+                // 清理舊的無效通道
+                if (cloudChannel) {
+                    try { supabaseClient.removeChannel(cloudChannel); } catch(ce){}
+                }
                 
+                // 重新綁定監聽
                 cloudChannel = supabaseClient.channel('db-changes')
                     .on('postgres_changes', { 
                         event: '*', 
@@ -480,11 +487,14 @@ createApp({
                             if (payload.new.shopping_list) shoppingList.value = payload.new.shopping_list;
                             if (payload.new.expenses) expenses.value = payload.new.expenses;
                             saveLocalBackup();
+                            isSynced.value = true;
                         }
                     })
                     .subscribe((status) => {
                         if (status === 'SUBSCRIBED') {
                             isSynced.value = true;
+                        } else if (status === 'CLOSED' || status === 'CHANNEL_ERROR') {
+                            isSynced.value = false;
                         }
                     });
 
@@ -492,11 +502,16 @@ createApp({
                 console.log("連線發生異常：", err);
                 isSynced.value = false; 
                 loadLocalBackup();
-                setTimeout(connectToSupabase, 5000);
             }
         };
 
-        // 🛠️ 修正點一：深度解構 Vue Proxy 響應式變體，確保不夾帶任何 Vue 底層內部屬性送上雲端
+        // 手動點擊狀態列強制雙向深度同步
+        const forceManualSync = async () => {
+            isSynced.value = false;
+            await connectToSupabase();
+            await updateCloud();
+        };
+
         const updateCloud = async () => {
             saveLocalBackup(); 
             if (!supabaseClient) return;
@@ -505,15 +520,21 @@ createApp({
                 const cleanShopping = JSON.parse(JSON.stringify(shoppingList.value));
                 const cleanExpenses = JSON.parse(JSON.stringify(expenses.value));
 
-                await supabaseClient.from('trips').upsert({ 
+                const { error } = await supabaseClient.from('trips').upsert({ 
                     room_id: FIXED_ROOM_ID,
                     events: cleanEvents, 
                     shopping_list: cleanShopping, 
                     expenses: cleanExpenses 
                 }, { onConflict: 'room_id' }); 
-                isSynced.value = true;
+                
+                if(!error) {
+                    isSynced.value = true;
+                } else {
+                    isSynced.value = false;
+                    console.error("資料庫拒絕寫入：", error);
+                }
             } catch (e) {
-                console.error("雲端同步失敗: ", e);
+                isSynced.value = false;
             }
         };
 
@@ -528,23 +549,7 @@ createApp({
             const localShop = localStorage.getItem('sh_list'); 
             const localExp = localStorage.getItem('ex_list');
             
-            // 如果本地與雲端都沒有，初始化預設行程
-            if (localEvt) {
-                events.value = JSON.parse(localEvt);
-            } else {
-                events.value = [
-                    { id: 1, dayIdx: 0, category: '航班', location: '成田空港', time: '14:55', flightNum: 'HX608', flightDep: 'HKG', flightArr: 'NRT', flightArrTime: '20:10', flightDuration: '4h 15m', note: '抵達成田空港\n辦理入境提取行李。', transTime: '50', transMode: 'transit' },
-                    { id: 2, dayIdx: 0, category: '住宿', location: '東京淺草橫綱Hotel', time: '21:30', note: '辦理入住手續', transTime: '15', transMode: 'walk' },
-                    { id: 3, dayIdx: 0, category: '美食', location: '淺草附近拉麵/居酒屋', time: '22:00', note: '宵夜與放鬆', transTime: '0', transMode: 'walk' },
-                    { id: 4, dayIdx: 1, category: '景點', location: '御殿場 Premium Outlets', time: '10:00', openTime: '10:00-20:00', note: '瘋狂購物行程！', transTime: '120', transMode: 'drive' },
-                    { id: 5, dayIdx: 2, category: '美食', location: '築地場外市場', time: '08:30', note: '早餐享用海鮮丼與玉子燒', transTime: '30', transMode: 'transit' },
-                    { id: 6, dayIdx: 2, category: '景點', location: '分頭活動 / 自由逛街', time: '13:00', note: '各自安排想去的景點', transTime: '40', transMode: 'transit' },
-                    { id: 7, dayIdx: 3, category: '景點', location: '東京晴空塔 (SKYTREE)', time: '09:35', ticketPrice: '已預約 09:30 門票', note: '登高看東京全景', transTime: '30', transMode: 'transit' },
-                    { id: 8, dayIdx: 3, category: '景點', location: '銀座 / 有樂町散策', time: '14:00', note: '逛街精品、無印良品旗艦店', transTime: '25', transMode: 'transit' },
-                    { id: 9, dayIdx: 4, category: '景點', location: '淺草寺周邊最後巡禮', time: '09:00', note: '買手信、補貨', transTime: '60', transMode: 'transit' },
-                    { id: 10, dayIdx: 4, category: '航班', location: '成田空港', time: '15:30', flightNum: 'HX609', flightDep: 'NRT', flightArr: 'HKG', flightArrTime: '21:00', flightDuration: '4h 30m', note: '起飛回港，結束美好旅程', transTime: '0', transMode: 'transit' }
-                ];
-            }
+            if (localEvt) events.value = JSON.parse(localEvt);
             if (localShop) shoppingList.value = JSON.parse(localShop); 
             if (localExp) expenses.value = JSON.parse(localExp);
         };
@@ -614,7 +619,6 @@ createApp({
 
         const closeModal = () => { showModal.value = false; };
 
-        // 🛠️ 修正點二：手機端「新增全新行程」時，強制鎖定當前點擊的天數 (selectedDay) 並注入防卡死格式
         const saveEvent = () => {
             if (!modalData.value.location || !modalData.value.time) { alert('請填寫地點與時間！'); return; }
             if (isEditMode.value) {
@@ -622,12 +626,7 @@ createApp({
                 if (idx !== -1) events.value[idx] = { ...modalData.value };
             } else {
                 const newId = events.value.length ? Math.max(...events.value.map(e => e.id)) + 1 : 1;
-                // 強制將行程歸入當前選擇的天數分頁
-                events.value.push({ 
-                    ...modalData.value, 
-                    id: newId, 
-                    dayIdx: selectedDay.value 
-                });
+                events.value.push({ ...modalData.value, id: newId, dayIdx: selectedDay.value });
             }
             events.value.sort((a, b) => a.time.localeCompare(b.time)); 
             updateCloud(); 
@@ -636,19 +635,13 @@ createApp({
 
         const deleteEvent = () => { events.value = events.value.filter(e => e.id !== currentTargetEventId); updateCloud(); closeModal(); };
 
-        // 🛠️ 修正點三：購物清單新增與修改邏輯修正，防止響應式 proxy 無效丟失
         const saveShoppingItem = () => {
             if (!modalData.value.name) return;
             if (isEditMode.value) {
                 const idx = shoppingList.value.findIndex(s => s.id === modalData.value.id);
                 if (idx !== -1) shoppingList.value[idx] = { ...modalData.value };
             } else {
-                shoppingList.value.push({ 
-                    id: Date.now(), 
-                    name: modalData.value.name, 
-                    image: modalData.value.image, 
-                    checked: false 
-                });
+                shoppingList.value.push({ id: Date.now(), name: modalData.value.name, image: modalData.value.image, checked: false });
             }
             updateCloud(); 
             closeModal();
@@ -661,7 +654,6 @@ createApp({
             const reader = new FileReader(); reader.onload = (event) => { modalData.value.image = event.target.result; }; reader.readAsDataURL(file);
         };
 
-        // 🛠️ 修正點四：花費欄位強制轉為數字，避免傳送空字串或未定義格式導致 Supabase 報錯拒收
         const saveExpenseItem = () => {
             if (!modalData.value.name || !modalData.value.amount) return;
             expenses.value.push({ 
@@ -683,6 +675,20 @@ createApp({
             fetchTokyoWeatherForecast(); 
             connectToSupabase();
             
+            // 特效：當使用者解鎖手機、重新打開網頁分頁時，立馬抓取最新進度
+            document.addEventListener("visibilitychange", () => {
+                if (document.visibilityState === "visible") {
+                    connectToSupabase();
+                }
+            });
+
+            // 心跳機制：每 15 秒如果發現狀態還是未同步，自動做一次安全檢測與重連
+            setInterval(() => {
+                if (!isSynced.value) {
+                    connectToSupabase();
+                }
+            }, 15000);
+
             const el = document.getElementById('drag-container'); 
             if (el) { Sortable.create(el, { animation: 200, disabled: true }); }
         });
@@ -690,7 +696,7 @@ createApp({
         return { 
             currentTab, selectedDay, exchangeRate, calcInputJPY, tabs, days, activeWeather, 
             currentDayEvents, shoppingList, expenses, totalJPY, totalHKD, triggerGoogleMap, getCategoryClass, getPrevDayHotel,
-            showModal, isEditMode, modalType, modalData, modalTitle, triggerFAB, openModal, closeModal, isSynced, updateCloud,
+            showModal, isEditMode, modalType, modalData, modalTitle, triggerFAB, openModal, closeModal, isSynced, updateCloud, forceManualSync,
             saveEvent, deleteEvent, saveShoppingItem, deleteShoppingItem, handleImageUpload, saveExpenseItem, deleteExpenseItem,
             previewImageUrl, imgScale, imgX, imgY, openImagePreview, closeImagePreview, onTouchStart, onTouchMove, onTouchEnd
         };
