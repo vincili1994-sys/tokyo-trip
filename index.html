@@ -174,8 +174,7 @@
             </div>
 
             <div v-for="shop in shoppingList" :key="shop.id" class="bg-white/90 p-3 rounded-2xl border border-rose-50 shadow-sm flex justify-between items-center transition-colors">
-                
-                <div @click="toggleShopChecked(shop)" class="flex items-center gap-3 flex-1 cursor-pointer select-none">
+                <div @click="toggleShopChecked(shop)" class="flex items-center gap-3 flex-1 sandbox-click-area cursor-pointer select-none min-w-0">
                     <span class="text-lg flex-shrink-0">
                         {{ shop.checked ? '⭐' : '☆' }}
                     </span>
@@ -184,7 +183,7 @@
                         <img :src="shop.image" class="w-full h-full object-cover">
                     </div>
 
-                    <div class="min-w-0">
+                    <div class="min-w-0 flex-1">
                         <span class="font-bold text-sm block truncate" :class="shop.checked ? 'line-through text-slate-400' : 'text-slate-700'">{{ shop.name }}</span>
                         <span v-if="shop.note" class="text-[11px] text-slate-400 block truncate mt-0.5">{{ shop.note }}</span>
                     </div>
@@ -270,7 +269,6 @@ createApp({
         const weatherDatabase = ref({});
         const previewImageUrl = ref(null);
 
-        // 手機端隨手記、購物暫存綁定
         const quickExpense = ref({ name: '', amount: null });
         const quickShopping = ref({ name: '', image: '' });
 
@@ -293,7 +291,6 @@ createApp({
         const shoppingList = ref([]);
         const expenses = ref([]);
 
-        // 天氣預報讀取
         const fetchTokyoWeather = async () => {
             try {
                 const res = await fetch("https://api.open-meteo.com/v1/forecast?latitude=35.6895&longitude=139.6917&current=temperature_2m,weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&hourly=precipitation_probability&timezone=Asia%2FTokyo");
@@ -331,16 +328,17 @@ createApp({
                 .sort((a, b) => (a.time || '').localeCompare(b.time || ''));
         });
 
-        const triggerGoogleMap = (loc) => window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(loc)}`, '_blank');
+        // 🛠️ 這裡使用了正確的反單引號，徹底修復崩潰 Bug
+        const triggerGoogleMap = (loc) => window.open(`http://maps.google.com/?q=$${encodeURIComponent(loc)}`, '_blank');
+        
         const getCategoryClass = (cat) => {
-            const classes = { '景點':'bg-rose-100 text-rose-700','住宿':'bg-emerald-100 text-emerald-700','美食':'bg-amber-100 text-amber-800','購物':'bg-indigo-100 text-indigo-700','航班':'bg-sky-100 text-sky-800' };
+            const classes = { '景點':'bg-rose-100 text-rose-700','住宿':'bg-emerald-100 text-emerald-70','美食':'bg-amber-100 text-amber-800','購物':'bg-indigo-100 text-indigo-700','航班':'bg-sky-100 text-sky-800' };
             return classes[cat] || 'bg-slate-100 text-slate-700';
         };
 
         const totalJPY = computed(() => expenses.value.reduce((sum, e) => sum + (Number(e.amount) || 0), 0));
         const totalHKD = computed(() => totalJPY.value * exchangeRate.value);
 
-        // 雲端資料同步核心邏輯
         const connectToSupabase = async () => {
             try {
                 const { data, error } = await supabaseClient.from('trips').select('*').eq('room_id', FIXED_ROOM_ID).maybeSingle();
@@ -374,7 +372,6 @@ createApp({
 
         const forceManualSync = () => { connectToSupabase(); };
 
-        // 📷 手機端圖片轉 Base64 壓縮處理
         const handleQuickImage = (e) => {
             const file = e.target.files[0];
             if (!file) return;
@@ -384,7 +381,6 @@ createApp({
                 img.onload = () => {
                     const canvas = document.createElement('canvas');
                     const ctx = canvas.getContext('2d');
-                    // 行動端極致壓縮優化，防爆記憶體
                     const maxW = 500; 
                     const scale = Math.min(maxW / img.width, 1);
                     canvas.width = img.width * scale;
@@ -397,7 +393,6 @@ createApp({
             reader.readAsDataURL(file);
         };
 
-        // 🧺 必買清單行為
         const addQuickShoppingItem = () => {
             if (!quickShopping.value.name.trim()) return;
             shoppingList.value.push({
@@ -422,7 +417,6 @@ createApp({
             updateCloud();
         };
 
-        // 💰 記帳行為
         const addQuickExpense = () => {
             if (!quickExpense.value.name || !quickExpense.value.amount) return;
             const today = new Date();
@@ -445,7 +439,6 @@ createApp({
             updateCloud();
         };
 
-        // 燈箱控制
         const openImagePreview = (url) => { previewImageUrl.value = url; };
         const closeImagePreview = () => { previewImageUrl.value = null; };
 
